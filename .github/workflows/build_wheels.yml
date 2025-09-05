@@ -1,9 +1,9 @@
 name: Build Flash-Attention 3 Wheels
 
 on:
-  schedule:
+  #schedule:
     # 每周日凌晨2点运行
-    - cron: '0 2 * * 0'
+    #- cron: '0 2 * * 0'
   workflow_dispatch:
     inputs:
       cuda_versions:
@@ -24,7 +24,7 @@ env:
 
 jobs:
   prepare-matrix:
-    runs-on: buildjet-16vcpu-ubuntu-2204
+    runs-on: buildjet-2vcpu-ubuntu-2204
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
@@ -101,7 +101,8 @@ jobs:
 
   build-wheels:
     needs: prepare-matrix
-    runs-on: ubuntu-latest
+    runs-on: buildjet-16vcpu-ubuntu-2204
+    timeout-minutes: 1440
     strategy:
       fail-fast: false
       matrix: ${{fromJson(needs.prepare-matrix.outputs.matrix)}}

@@ -16,7 +16,6 @@ export CUDA_HOME=/usr/local/cuda-${CUDA_VERSION}
 export PATH=${CUDA_HOME}/bin:${PATH}
 export LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}
 export MAX_JOBS=${MAX_JOBS}
-export NVCC_APPEND_FLAGS="--threads=1"
 export FLASH_ATTENTION_FORCE_BUILD=TRUE
 
 echo "Installing dependencies..."
@@ -54,7 +53,7 @@ fi
 CUDA_VERSION_CLEAN=$(echo $CUDA_VERSION | tr -d '.')
 TORCH_VERSION_CLEAN=$(echo $TORCH_VERSION | tr -d '.')
 
-LOCAL_VERSION="${BUILD_DATE}+cu${CUDA_VERSION_CLEAN}torch${TORCH_VERSION_CLEAN}cxx11abi${CXX11_ABI}+g${GIT_HASH}"
+LOCAL_VERSION="${BUILD_DATE}.cu${CUDA_VERSION_CLEAN}torch${TORCH_VERSION_CLEAN}cxx11abi${CXX11_ABI}.${GIT_HASH}"
 
 echo "Local version identifier: $LOCAL_VERSION"
 
