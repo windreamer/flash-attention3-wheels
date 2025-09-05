@@ -1,0 +1,195 @@
+name: Build Flash-Attention 3 Wheels
+
+on:
+  schedule:
+    # 每周日凌晨2点运行
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+    inputs:
+      cuda_versions:
+        description: 'CUDA versions to build (comma-separated)'
+        required: false
+        default: '12.6,12.8,12.9'
+      torch_versions:
+        description: 'PyTorch versions to build (comma-separated)'
+        required: false
+        default: '2.8.0'
+      python_versions:
+        description: 'Python versions to build (comma-separated)'
+        required: false
+        default: '3.10,3.11,3.12,3.13'
+
+env:
+  REPO_NAME: flash-attention3-wheels
+
+jobs:
+  prepare-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up build matrix
+        id: set-matrix
+        shell: python
+        run: |
+          import json
+          import os
+
+          import json, os, re, requests
+
+          url = "https://hub.docker.com/v2/repositories/nvidia/cuda/tags/"
+          params = {"page_size": 100, "name": "ubuntu20.04"}
+          tags = []
+          while url:
+              resp = requests.get(url, params=params).json()
+              tags.extend(resp["results"])
+              url = resp.get("next")
+
+          pattern = re.compile(r"^(\d+)\.(\d+)\.(\d+)-devel-ubuntu20\.04$")
+          matches = []
+          for t in tags:
+              m = pattern.match(t["name"])
+              if m:
+                  major, minor, patch = m.groups()
+                  if int(major) < 12 or int(minor) < 6:
+                      continue
+
+                  matches.append((f"{major}.{minor}", int(patch)))
+
+          latest = {}
+          for major_minor, patch in matches:
+              key = major_minor
+              if key not in latest or patch > latest[key][1]:
+                  latest[key] = (major_minor, patch)
+
+          cuda_full_map = {k: f"{k}.{v[1]}" for k, v in latest.items()}
+
+          # 获取输入版本
+          if "${{ github.event_name }}" == "workflow_dispatch":
+            cuda_versions = "${{ github.event.inputs.cuda_versions }}".split(',')
+            torch_versions = "${{ github.event.inputs.torch_versions }}".split(',')
+            python_versions = "${{ github.event.inputs.python_versions }}".split(',')
+          else:
+            cuda_versions = ["12.6", "12.8", "12.9"]
+            torch_versions = ["2.8.0"]
+            python_versions = ["3.10", "3.11", "3.12", "3.13"]
+
+          # 构建矩阵
+          matrix = {"include": []}
+
+          for cuda in cuda_versions:
+            cuda = cuda.strip()
+            assert cuda in cuda_full_map
+            cuda_full = cuda_full_map[cuda]
+            for torch in torch_versions:
+              for py in python_versions:
+                matrix["include"].append({
+                  "cuda": cuda,
+                  "cuda_full": cuda_full,
+                  "torch": torch.strip(),
+                  "python": py.strip()
+                })
+
+          # 输出到 GitHub Actions
+          matrix_json = json.dumps(matrix, separators=(',', ':'))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+            f.write(f"matrix<<EOF\n{matrix_json}\nEOF\n")
+
+          print("Generated matrix:")
+          print(json.dumps(matrix, indent=2))
+
+  build-wheels:
+    needs: prepare-matrix
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{fromJson(needs.prepare-matrix.outputs.matrix)}}
+    
+    container:
+      image: nvidia/cuda:${{ matrix.cuda_full}}-devel-ubuntu20.04
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install system dependencies
+        run: |
+          sed -i 's|http://archive.ubuntu.com|http://azure.archive.ubuntu.com|g' /etc/apt/sources.list
+          apt-get update
+          apt-get install -y git build-essential ninja-build curl
+  
+      - name: Set up Python
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          export PATH="$HOME/.local/bin:$PATH"
+          uv venv --python python${{ matrix.python }} --seed /opt/venv
+          echo "/opt/venv/bin" >> $GITHUB_PATH
+          echo "VIRTUAL_ENV=/opt/venv" >> $GITHUB_ENV
+      
+      - name: Make build script executable
+        run: chmod +x scripts/build_wheel.sh
+      
+      - name: Build wheel
+        id: build
+        run: |
+          scripts/build_wheel.sh ${{ matrix.cuda }} ${{ matrix.torch }} ${{ matrix.python }} 4
+          
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel-cu${{ matrix.cuda }}-torch${{ matrix.torch }}-py${{ matrix.python }}
+          path: /tmp/wheels/*.whl
+          retention-days: 7
+
+  create-release:
+    needs: build-wheels
+    runs-on: ubuntu-latest
+    if: always() && !cancelled()
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      
+      - name: Organize wheels
+        run: |
+          mkdir -p release-wheels
+          find artifacts -name "*.whl" -exec cp {} release-wheels/ \;
+          ls -la release-wheels/
+      
+      - name: Generate release tag
+        id: tag
+        run: |
+          DATE_TAG=$(date +'%Y.%m.%d')
+          echo "tag=${DATE_TAG}" >> $GITHUB_OUTPUT
+          echo "date=${DATE_TAG}" >> $GITHUB_OUTPUT
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: "Flash-Attention 3 Wheels - ${{ steps.tag.outputs.date }}"
+          body: |
+            ## Flash-Attention 3 Pre-built Wheels
+            
+            **Build Date:** ${{ steps.tag.outputs.date }}
+            
+          files: release-wheels/*.whl
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update-pages:
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Trigger pages update
+        uses: ./.github/workflows/update-pages.yml
+        with:
+          release_tag: ${{ needs.create-release.outputs.tag }}
