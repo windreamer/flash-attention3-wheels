@@ -1,0 +1,86 @@
+name: Update GitHub Pages
+
+on:
+  workflow_call:
+    inputs:
+      release_tag:
+        description: 'Release tag that triggered this update'
+        required: false
+        type: string
+  workflow_dispatch:
+  release:
+    types: [published, edited]
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+  actions: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  # Single deploy job since we're just deploying
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          pip install requests
+      - name: Generate index pages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python scripts/generate_pages.py \
+            --owner ${{ github.repository_owner }} \
+            --repo ${{ github.event.repository.name }} \
+            --token $GITHUB_TOKEN \
+            --output docs
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Delete old github-pages artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ARTIFACTS=$(gh api repos/${{ github.repository }}/actions/artifacts --jq '.artifacts[] | select(.name == "github-pages") | .id')
+          for id in $ARTIFACTS; do
+            echo "Deleting artifact $id"
+            gh api --method DELETE repos/${{ github.repository }}/actions/artifacts/$id
+          done
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'docs'
+      - name: Keep only the latest github-pages artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ARTIFACTS=$(gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts --jq '.artifacts[] | select(.name == "github-pages") | .id')
+
+          FIRST=true
+          for id in $ARTIFACTS; do
+            if [ "$FIRST" = true ]; then
+              echo "Keeping latest artifact $id"
+              FIRST=false
+            else
+              echo "Deleting old artifact $id"
+              gh api --method DELETE repos/${{ github.repository }}/actions/artifacts/$id
+            fi
+          done
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

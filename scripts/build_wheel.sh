@@ -3,13 +3,11 @@ set -e
 
 CUDA_VERSION=${1:-"12.8"}
 TORCH_VERSION=${2:-"2.8.0"}
-PYTHON_VERSION=${3:-"3.10"}
-MAX_JOBS=${4:-"4"}
+MAX_JOBS=${3:-"4"}
 
 echo "Building Flash-Attention 3 wheel:"
 echo "CUDA Version: $CUDA_VERSION"
 echo "PyTorch Version: $TORCH_VERSION"
-echo "Python Version: $PYTHON_VERSION"
 echo "Max Jobs: $MAX_JOBS"
 
 export CUDA_HOME=/usr/local/cuda-${CUDA_VERSION}

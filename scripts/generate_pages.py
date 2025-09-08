@@ -8,14 +8,15 @@ from datetime import datetime
 from typing import Dict, List, Tuple
 import argparse
 
-# match flash_attn-3.0.0+20240905+cu12torch2.4cxx11abiFALSE+g123456-cp310-cp310-linux_x86_64.whl
 WHEEL_RE = re.compile(
-    r"flash_attn-(?P<base>\d+\.\d+\.\d+)"          # 3.0.0
-    r"\+(?P<date>\d{8})\+cu(?P<cuda>\d+\.\d+)"     # 20240905+cu12.3
-    r"torch(?P<torch>\d+\.\d+\.\d+)"                # torch2.4.0
-    r"cxx11abi(?P<abi>TRUE|FALSE)"                  # cxx11abiFALSE
-    r"\+g[a-f0-9]+"                                  # +g123456
-    r"-cp(?P<py>\d{2})-.*linux.*\.whl"              # -cp310-cp310-linux_x86_64.whl
+    r"flash_attn_3-(?P<base>\d+\.\d+\.\d+(?:[a-zA-Z]+\d*)?)"   # 3.0.0b1
+    r"[.+](?P<date>\d{8})"                                     # 20250907
+    r"[.+]cu(?P<cuda>\d{3})"                                   # 129
+    r"torch(?P<torch>\d{3})"                                   # 280
+    r"cxx11abi(?P<abi>true|false)"                             # true
+    r"[.+][a-f0-9]+"                                           # dfb664
+    r"-cp(?P<py>\d{2})-.*linux.*\.whl",                        # cp39-abi3-linux_x86_64.whl
+    re.I
 )
 
 class WheelIndexGenerator:
@@ -62,7 +63,8 @@ class WheelIndexGenerator:
                         cuda_ver = info['cuda_version']
                         torch_ver = info['torch_version']
                         
-                        key = f"cu{cuda_ver.replace('.', '')}_torch{torch_ver.replace('.', '')}"
+
+                        key = f"cu{cuda_ver}_torch{torch_ver}"
                         if key not in organized:
                             organized[key] = []
                         
@@ -72,8 +74,10 @@ class WheelIndexGenerator:
                             'size': asset['size'],
                             'created_at': asset['created_at'],
                             'python_version': info['python_version'],
-                            'flash_version': info['version'],
-                            'release_date': release_date
+                            'flash_version': info['base_version'],
+                            'release_date': release_date,
+                            'cuda_version': cuda_ver,
+                            'torch_version': torch_ver,
                         })
         
         return organized
@@ -127,7 +131,7 @@ class WheelIndexGenerator:
     
     <h2>Installation Instructions</h2>
     <p>Add the appropriate index URL to your pip command:</p>
-    <pre><code>pip install flash-attn3 --find-links https://""" + f"{self.repo_owner}.github.io/{self.repo_name}" + """/PATH/TO/INDEX</code></pre>
+    <pre><code>pip install flash_attn_3 --find-links https://""" + f"{self.repo_owner}.github.io/{self.repo_name}" + """/PATH/TO/INDEX</code></pre>
     
     <h2>Available Wheel Indexes</h2>
 """
@@ -136,22 +140,22 @@ class WheelIndexGenerator:
             if not wheels:
                 continue
                 
-            cuda_ver = wheels[0]['download_url'].split('cu')[1].split('-')[0]
-            cuda_ver = f"{cuda_ver[0]}.{cuda_ver[1:]}"
-            torch_ver = wheels[0]['download_url'].split('torch')[1].split('-')[0]
-            torch_ver = f"{torch_ver[0]}.{torch_ver[1:3]}.{torch_ver[3:]}"
+            cuda_ver = wheels[0]['cuda_version']
+            cuda_ver = f'{cuda_ver[:2]}.{cuda_ver[2:]}'
+            torch_ver = wheels[0]['torch_version']
+            torch_ver = f'{torch_ver[0]}.{torch_ver[1]}.{torch_ver[2:]}'
             
             wheel_count = len(wheels)
             last_updated = max(w['release_date'] for w in wheels)
             
             html += f"""
     <div class="wheel-section">
-        <h3>CUDA {cuda_ver}, PyTorch {torch_version}</h3>
+        <h3>CUDA {cuda_ver}, PyTorch {torch_ver}</h3>
         <p class="stats">{wheel_count} wheels available • Last updated: {last_updated}</p>
         <a href="{key}/index.html" class="wheel-link">View Wheels</a>
         <details>
             <summary>Direct pip command</summary>
-            <code>pip install flash-attn3 --find-links https://{self.repo_owner}.github.io/{self.repo_name}/{key}</code>
+            <code>pip install flash_attn_3 --find-links https://{self.repo_owner}.github.io/{self.repo_name}/{key}</code>
         </details>
     </div>
 """
@@ -161,20 +165,17 @@ class WheelIndexGenerator:
     <ul>
         <li><strong>GitHub Repository:</strong> <a href="https://github.com/""" + f"{self.repo_owner}/{self.repo_name}" + """">https://github.com/""" + f"{self.repo_owner}/{self.repo_name}" + """</a></li>
         <li><strong>Build Schedule:</strong> Weekly (Sundays at 2 AM UTC)</li>
-        <li><strong>Supported CUDA Versions:</strong> 12.3, 12.4, 12.5+</li>
-        <li><strong>Supported PyTorch Versions:</strong> 2.3.0, 2.4.0, 2.5.0+</li>
-        <li><strong>Supported Python Versions:</strong> 3.9, 3.10, 3.11, 3.12</li>
     </ul>
     
     <h2>Usage Examples</h2>
     <pre><code># Install for CUDA 12.3, PyTorch 2.4.0
-pip install flash-attn3 --find-links https://""" + f"{self.repo_owner}.github.io/{self.repo_name}" + """/cu123_torch240
+pip install flash_attn_3 --find-links https://""" + f"{self.repo_owner}.github.io/{self.repo_name}" + """/cu128_torch280
 
 # Install specific version
-pip install flash-attn3==3.0.0 --find-links https://""" + f"{self.repo_owner}.github.io/{self.repo_name}" + """/cu123_torch240
+pip install flash_attn_3==3.0.0 --find-links https://""" + f"{self.repo_owner}.github.io/{self.repo_name}" + """/cu128_torch280
 
 # Upgrade existing installation
-pip install --upgrade flash-attn3 --find-links https://""" + f"{self.repo_owner}.github.io/{self.repo_name}" + """/cu123_torch240</code></pre>
+pip install --upgrade flash_attn_3 --find-links https://""" + f"{self.repo_owner}.github.io/{self.repo_name}" + """/cu128_torch280</code></pre>
 </body>
 </html>"""
         
@@ -204,22 +205,14 @@ pip install --upgrade flash-attn3 --find-links https://""" + f"{self.repo_owner}
                 
             print(f"Generating index page for {key}...")
             
-            # 从第一个wheel获取版本信息
-            sample_wheel = wheels[0]
-            cuda_match = re.search(r'cu(\d+\.\d+)', sample_wheel['download_url'])
-            torch_match = re.search(r'torch(\d+\.\d+\.\d+)', sample_wheel['download_url'])
+            cuda_version, torch_version = key.split('_')
+            # 创建子目录
+            subdir = output_path / key
+            subdir.mkdir(exist_ok=True)
             
-            if cuda_match and torch_match:
-                cuda_version = cuda_match.group(1)
-                torch_version = torch_match.group(1)
-                
-                # 创建子目录
-                subdir = output_path / key
-                subdir.mkdir(exist_ok=True)
-                
-                # 生成索引页面
-                index_content = self.generate_simple_index(wheels, cuda_version, torch_version)
-                (subdir / "index.html").write_text(index_content)
+            # 生成索引页面
+            index_content = self.generate_simple_index(wheels, cuda_version, torch_version)
+            (subdir / "index.html").write_text(index_content)
         
         print(f"All pages generated in {output_dir}")
 

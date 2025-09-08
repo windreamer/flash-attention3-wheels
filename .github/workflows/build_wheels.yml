@@ -14,17 +14,13 @@ on:
         description: 'PyTorch versions to build (comma-separated)'
         required: false
         default: '2.8.0'
-      python_versions:
-        description: 'Python versions to build (comma-separated)'
-        required: false
-        default: '3.10,3.11,3.12,3.13'
 
 env:
   REPO_NAME: flash-attention3-wheels
 
 jobs:
   prepare-matrix:
-    runs-on: buildjet-2vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
@@ -69,11 +65,9 @@ jobs:
           if "${{ github.event_name }}" == "workflow_dispatch":
             cuda_versions = "${{ github.event.inputs.cuda_versions }}".split(',')
             torch_versions = "${{ github.event.inputs.torch_versions }}".split(',')
-            python_versions = "${{ github.event.inputs.python_versions }}".split(',')
           else:
             cuda_versions = ["12.6", "12.8", "12.9"]
             torch_versions = ["2.8.0"]
-            python_versions = ["3.10", "3.11", "3.12", "3.13"]
 
           # 构建矩阵
           matrix = {"include": []}
@@ -83,12 +77,10 @@ jobs:
             assert cuda in cuda_full_map
             cuda_full = cuda_full_map[cuda]
             for torch in torch_versions:
-              for py in python_versions:
                 matrix["include"].append({
                   "cuda": cuda,
                   "cuda_full": cuda_full,
                   "torch": torch.strip(),
-                  "python": py.strip()
                 })
 
           # 输出到 GitHub Actions
@@ -101,7 +93,7 @@ jobs:
 
   build-wheels:
     needs: prepare-matrix
-    runs-on: buildjet-16vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
     timeout-minutes: 1440
     strategy:
       fail-fast: false
@@ -117,28 +109,20 @@ jobs:
         run: |
           sed -i 's|http://archive.ubuntu.com|http://azure.archive.ubuntu.com|g' /etc/apt/sources.list
           apt-get update
-          apt-get install -y git build-essential ninja-build curl
+          apt-get install -y git build-essential ninja-build curl python-is-python3 python3-pip
   
-      - name: Set up Python
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          export PATH="$HOME/.local/bin:$PATH"
-          uv venv --python python${{ matrix.python }} --seed /opt/venv
-          echo "/opt/venv/bin" >> $GITHUB_PATH
-          echo "VIRTUAL_ENV=/opt/venv" >> $GITHUB_ENV
-      
       - name: Make build script executable
         run: chmod +x scripts/build_wheel.sh
       
       - name: Build wheel
         id: build
         run: |
-          scripts/build_wheel.sh ${{ matrix.cuda }} ${{ matrix.torch }} ${{ matrix.python }} 4
+          scripts/build_wheel.sh ${{ matrix.cuda }} ${{ matrix.torch }} 4
           
       - name: Upload wheel artifact
         uses: actions/upload-artifact@v4
         with:
-          name: wheel-cu${{ matrix.cuda }}-torch${{ matrix.torch }}-py${{ matrix.python }}
+          name: wheel-cu${{ matrix.cuda }}-torch${{ matrix.torch }}
           path: /tmp/wheels/*.whl
           retention-days: 7
 
@@ -182,7 +166,7 @@ jobs:
           draft: false
           prerelease: false
         env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   update-pages:
     needs: create-release
