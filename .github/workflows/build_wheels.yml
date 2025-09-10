@@ -16,6 +16,12 @@ on:
         default: '2.8.0'
 
 env:
+  PROJECT_ID: coherent-vim-471701-r7
+  ZONE: us-central1-a
+  MACHINE_TYPE: n2-custom-8-32768
+  IMAGE: ubuntu-2204-jammy-v20230615
+  IMAGE_PROJECT: ubuntu-os-cloud
+  VM_NAME: spot-runner-${{ github.run_number }}
   REPO_NAME: flash-attention3-wheels
 
 jobs:
@@ -91,23 +97,97 @@ jobs:
           print("Generated matrix:")
           print(json.dumps(matrix, indent=2))
 
-  build-wheels:
+  launch-spot-runner:
     needs: prepare-matrix
     runs-on: ubuntu-latest
-    timeout-minutes: 1440
     strategy:
+      max-parallel: 3
       fail-fast: false
       matrix: ${{fromJson(needs.prepare-matrix.outputs.matrix)}}
+    outputs:
+      labels: ${{ steps.reg.outputs.labels }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }} 
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Create Spot VM
+        run: |
+          CUDA="${{ matrix.cuda }}"
+          TORCH="${{ matrix.torch }}"
+          NAME="spot-${GITHUB_RUN_NUMBER}-cu${CUDA//./-}-torch${TORCH//./-}"
+          gcloud compute instances create "$NAME" \
+            --project=$PROJECT_ID --zone=$ZONE \
+            --machine-type=$MACHINE_TYPE \
+            --provisioning-model=SPOT \
+            --instance-termination-action=DELETE \
+            --boot-disk-size=100 \
+            --boot-disk-type=pd-ssd \
+            --max-run-duration=4h \
+            --instance-termination-action=DELETE \
+            --image=$IMAGE --image-project=$IMAGE_PROJECT \
+            --metadata=ssh-keys="ubuntu:ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDHClYdm3FsSNxqo7Dsbz3pZbG10Vkm8tQPPEjMhIlCj gha-runner" \
+            --labels=gh-runner=spot
+          echo "NAME=$NAME" >> $GITHUB_ENV
+
+      - name: Wait for SSH
+        id: net
+        run: |
+          IP=$(gcloud compute instances describe "$NAME" \
+                --zone=$ZONE --format="value(networkInterfaces[0].accessConfigs[0].natIP)")
+          echo "IP=$IP" >> $GITHUB_OUTPUT
+          echo "${{ secrets.GCP_SSH_KEY }}" > gha-runner
+          chmod 600 gha-runner
+          for i in {1..30}; do
+            ssh -o StrictHostKeyChecking=no \
+                -o UserKnownHostsFile=/dev/null \
+                -i gha-runner ubuntu@$IP "echo OK" && break || sleep 10
+          done
+
+      - name: Register runner
+        id: reg
+        run: |
+          LABELS="self-hosted,spot,${{ matrix.cuda }}-${{ matrix.torch }}"
+          ssh -o StrictHostKeyChecking=no \
+              -o UserKnownHostsFile=/dev/null \
+              -i gha-runner ubuntu@${{ steps.net.outputs.IP }} << EOF
+            set -e
+            sudo sed -i 's|http://archive.ubuntu.com|http://us-central1.gce.archive.ubuntu.com|g' /etc/apt/sources.list
+            sudo apt update
+            sudo apt install -y docker.io curl jq
+            sudo usermod -aG docker \${USER}
+            newgrp docker
+            mkdir -p runner && cd runner
+            LATEST=$(wget -qO- https://api.github.com/repos/actions/runner/releases/latest | grep -oP '"tag_name":\s*"v\K[^"]+')
+            wget -qO runner.tar.gz https://github.com/actions/runner/releases/download/v\${LATEST}/actions-runner-linux-x64-\${LATEST}.tar.gz
+            tar xzf runner.tar.gz
+            TOKEN=\$(curl -s -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" https://api.github.com/repos/${{ github.repository }}/actions/runners/registration-token | jq -r .token)
+            ./config.sh --url https://github.com/windreamer/flash-attention3-wheels --token \$TOKEN  --labels $LABELS --ephemeral --unattended
+            sudo ./svc.sh install
+            sudo ./svc.sh start
+          EOF
+          echo "labels=$LABELS" >> $GITHUB_OUTPUT
+
+  build-wheels:
+    needs: [prepare-matrix, launch-spot-runner]
+    strategy:
+      max-parallel: 3
+      fail-fast: false
+      matrix: ${{fromJson(needs.prepare-matrix.outputs.matrix)}}
+    runs-on: [self-hosted, spot, "${{ matrix.cuda }}-${{ matrix.torch }}"]
+    timeout-minutes: 1440
     
     container:
-      image: nvidia/cuda:${{ matrix.cuda_full}}-devel-ubuntu20.04
+      image: nvidia/cuda:${{ matrix.cuda_full}}-devel-ubuntu22.04
     
     steps:
       - uses: actions/checkout@v4
       
       - name: Install system dependencies
         run: |
-          sed -i 's|http://archive.ubuntu.com|http://azure.archive.ubuntu.com|g' /etc/apt/sources.list
+          sed -i 's|http://archive.ubuntu.com|http://us-central1.gce.archive.ubuntu.com|g' /etc/apt/sources.list
           apt-get update
           apt-get install -y git build-essential ninja-build curl python-is-python3 python3-pip
   
@@ -117,7 +197,7 @@ jobs:
       - name: Build wheel
         id: build
         run: |
-          scripts/build_wheel.sh ${{ matrix.cuda }} ${{ matrix.torch }} 4
+          scripts/build_wheel.sh ${{ matrix.cuda }} ${{ matrix.torch }} 6
           
       - name: Upload wheel artifact
         uses: actions/upload-artifact@v4
@@ -125,6 +205,26 @@ jobs:
           name: wheel-cu${{ matrix.cuda }}-torch${{ matrix.torch }}
           path: /tmp/wheels/*.whl
           retention-days: 7
+
+  cleanup:
+    needs: [launch-spot-runner, build-wheels]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }} 
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Stop runners & delete VMs
+        run: |
+          INSTANCES=$(gcloud compute instances list \
+                      --filter="labels.gh-runner=spot" \
+                      --format="value(name)")
+
+          for NAME in $INSTANCES; do
+            echo "==== Processing $NAME ===="
+            gcloud compute instances delete "$NAME" --zone="$ZONE" --quiet
+          done
 
   create-release:
     needs: build-wheels
@@ -170,11 +270,6 @@ jobs:
 
   update-pages:
     needs: create-release
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Trigger pages update
-        uses: ./.github/workflows/update-pages.yml
-        with:
-          release_tag: ${{ needs.create-release.outputs.tag }}
+    uses: ./.github/workflows/update-pages.yml
+    with:
+      release_tag: ${{ needs.create-release.outputs.tag }}

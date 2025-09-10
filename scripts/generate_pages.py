@@ -140,7 +140,7 @@ class WheelIndexGenerator:
             if not wheels:
                 continue
                 
-            cuda_ver = wheels[0]['cuda_version']
+            cudaver = cuda_ver = wheels[0]['cuda_version']
             cuda_ver = f'{cuda_ver[:2]}.{cuda_ver[2:]}'
             torch_ver = wheels[0]['torch_version']
             torch_ver = f'{torch_ver[0]}.{torch_ver[1]}.{torch_ver[2:]}'
@@ -155,7 +155,7 @@ class WheelIndexGenerator:
         <a href="{key}/index.html" class="wheel-link">View Wheels</a>
         <details>
             <summary>Direct pip command</summary>
-            <code>pip install flash_attn_3 --find-links https://{self.repo_owner}.github.io/{self.repo_name}/{key}</code>
+            <code>pip install flash_attn_3 --find-links https://{self.repo_owner}.github.io/{self.repo_name}/{key} --extra-index-url https://download.pytorch.org/whl/cu{cudaver} </code>
         </details>
     </div>
 """
