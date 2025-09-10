@@ -18,7 +18,7 @@ export FLASH_ATTENTION_FORCE_BUILD=TRUE
 
 echo "Installing dependencies..."
 pip install --upgrade pip
-pip install ninja packaging wheel setuptools numpy change_wheel_version
+pip install ninja packaging wheel setuptools numpy change-wheel-version
 pip install torch==${TORCH_VERSION} --index-url https://download.pytorch.org/whl/cu${CUDA_VERSION//./}
 
 WORK_DIR=$(mktemp -d)
