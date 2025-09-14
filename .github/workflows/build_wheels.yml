@@ -1,9 +1,8 @@
 name: Build Flash-Attention 3 Wheels
 
 on:
-  #schedule:
-    # 每周日凌晨2点运行
-    #- cron: '0 2 * * 0'
+  schedule:
+    - cron: '0 2 * * 0'
   workflow_dispatch:
     inputs:
       cuda_versions:
