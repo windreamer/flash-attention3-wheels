@@ -2,7 +2,7 @@ name: Build Flash-Attention 3 Wheels
 
 on:
   schedule:
-    - cron: '0 2 * * 0'
+    - cron: '0 22 * * 0'
   workflow_dispatch:
     inputs:
       cuda_versions:
@@ -17,7 +17,7 @@ on:
 env:
   PROJECT_ID: coherent-vim-471701-r7
   ZONE: us-central1-a
-  MACHINE_TYPE: n2-custom-8-32768
+  MACHINE_TYPE: n2-custom-16-65536
   IMAGE: ubuntu-2204-jammy-v20230615
   IMAGE_PROJECT: ubuntu-os-cloud
   VM_NAME: spot-runner-${{ github.run_number }}
@@ -34,11 +34,7 @@ jobs:
         id: set-matrix
         shell: python
         run: |
-          import json
-          import os
-
           import json, os, re, requests
-
           url = "https://hub.docker.com/v2/repositories/nvidia/cuda/tags/"
           params = {"page_size": 100, "name": "ubuntu20.04"}
           tags = []
@@ -46,7 +42,6 @@ jobs:
               resp = requests.get(url, params=params).json()
               tags.extend(resp["results"])
               url = resp.get("next")
-
           pattern = re.compile(r"^(\d+)\.(\d+)\.(\d+)-devel-ubuntu20\.04$")
           matches = []
           for t in tags:
@@ -55,9 +50,7 @@ jobs:
                   major, minor, patch = m.groups()
                   if int(major) < 12 or int(minor) < 6:
                       continue
-
                   matches.append((f"{major}.{minor}", int(patch)))
-
           latest = {}
           for major_minor, patch in matches:
               key = major_minor
@@ -66,37 +59,33 @@ jobs:
 
           cuda_full_map = {k: f"{k}.{v[1]}" for k, v in latest.items()}
 
-          # 获取输入版本
           if "${{ github.event_name }}" == "workflow_dispatch":
-            cuda_versions = "${{ github.event.inputs.cuda_versions }}".split(',')
-            torch_versions = "${{ github.event.inputs.torch_versions }}".split(',')
+              cuda_versions = [x.strip() for x in "${{ github.event.inputs.cuda_versions }}".split(",")]
+              torch_versions = [x.strip() for x in "${{ github.event.inputs.torch_versions }}".split(",")]
           else:
-            cuda_versions = ["12.6", "12.8", "12.9"]
-            torch_versions = ["2.8.0"]
+              cuda_versions = ["12.6", "12.8", "12.9"]
+              torch_versions = ["2.8.0"]
 
-          # 构建矩阵
           matrix = {"include": []}
 
           for cuda in cuda_versions:
-            cuda = cuda.strip()
-            assert cuda in cuda_full_map
-            cuda_full = cuda_full_map[cuda]
-            for torch in torch_versions:
-                matrix["include"].append({
-                  "cuda": cuda,
-                  "cuda_full": cuda_full,
-                  "torch": torch.strip(),
-                })
+              cuda = cuda.strip()
+              assert cuda in cuda_full_map
+              cuda_full = cuda_full_map[cuda]
+              for torch in torch_versions:
+                  matrix["include"].append({
+                      "cuda": cuda,
+                      "cuda_full": cuda_full,
+                      "torch": torch.strip(),
+                  })
 
-          # 输出到 GitHub Actions
           matrix_json = json.dumps(matrix, separators=(',', ':'))
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
-            f.write(f"matrix<<EOF\n{matrix_json}\nEOF\n")
-
+              f.write(f"matrix<<EOF\n{matrix_json}\nEOF\n")
           print("Generated matrix:")
           print(json.dumps(matrix, indent=2))
 
-  launch-spot-runner:
+  build-wheels:
     needs: prepare-matrix
     runs-on: ubuntu-latest
     strategy:
@@ -104,100 +93,81 @@ jobs:
       fail-fast: false
       matrix: ${{fromJson(needs.prepare-matrix.outputs.matrix)}}
     outputs:
-      labels: ${{ steps.reg.outputs.labels }}
+      status: ${{ job.status }}
     steps:
       - uses: actions/checkout@v4
       - uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }} 
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
       - uses: google-github-actions/setup-gcloud@v2
 
-      - name: Create Spot VM
+      - name: Prepare SSH key
         run: |
-          CUDA="${{ matrix.cuda }}"
-          TORCH="${{ matrix.torch }}"
-          NAME="spot-${GITHUB_RUN_NUMBER}-cu${CUDA//./-}-torch${TORCH//./-}"
-          gcloud compute instances create "$NAME" \
-            --project=$PROJECT_ID --zone=$ZONE \
-            --machine-type=$MACHINE_TYPE \
-            --provisioning-model=SPOT \
-            --instance-termination-action=DELETE \
-            --boot-disk-size=100 \
-            --boot-disk-type=pd-ssd \
-            --max-run-duration=4h \
-            --instance-termination-action=DELETE \
-            --image=$IMAGE --image-project=$IMAGE_PROJECT \
-            --metadata=ssh-keys="ubuntu:ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDHClYdm3FsSNxqo7Dsbz3pZbG10Vkm8tQPPEjMhIlCj gha-runner" \
-            --labels=gh-runner=spot
-          echo "NAME=$NAME" >> $GITHUB_ENV
-
-      - name: Wait for SSH
-        id: net
-        run: |
-          IP=$(gcloud compute instances describe "$NAME" \
-                --zone=$ZONE --format="value(networkInterfaces[0].accessConfigs[0].natIP)")
-          echo "IP=$IP" >> $GITHUB_OUTPUT
           echo "${{ secrets.GCP_SSH_KEY }}" > gha-runner
           chmod 600 gha-runner
-          for i in {1..30}; do
-            ssh -o StrictHostKeyChecking=no \
-                -o UserKnownHostsFile=/dev/null \
-                -i gha-runner ubuntu@$IP "echo OK" && break || sleep 10
-          done
 
-      - name: Register runner
-        id: reg
-        run: |
-          LABELS="self-hosted,spot,${{ matrix.cuda }}-${{ matrix.torch }}"
-          ssh -o StrictHostKeyChecking=no \
-              -o UserKnownHostsFile=/dev/null \
-              -i gha-runner ubuntu@${{ steps.net.outputs.IP }} << EOF
-            set -e
-            sudo sed -i 's|http://archive.ubuntu.com|http://us-central1.gce.archive.ubuntu.com|g' /etc/apt/sources.list
-            sudo apt update
-            sudo apt install -y docker.io curl jq
-            sudo usermod -aG docker \${USER}
-            newgrp docker
-            mkdir -p runner && cd runner
-            LATEST=$(wget -qO- https://api.github.com/repos/actions/runner/releases/latest | grep -oP '"tag_name":\s*"v\K[^"]+')
-            wget -qO runner.tar.gz https://github.com/actions/runner/releases/download/v\${LATEST}/actions-runner-linux-x64-\${LATEST}.tar.gz
-            tar xzf runner.tar.gz
-            TOKEN=\$(curl -s -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" https://api.github.com/repos/${{ github.repository }}/actions/runners/registration-token | jq -r .token)
-            ./config.sh --url https://github.com/windreamer/flash-attention3-wheels --token \$TOKEN  --labels $LABELS --ephemeral --unattended
-            sudo ./svc.sh install
-            sudo ./svc.sh start
-          EOF
-          echo "labels=$LABELS" >> $GITHUB_OUTPUT
+      - name: Create Spot VM and build wheel
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 600
+          max_attempts: 2
+          retry_wait_seconds: 30
+          command: |
+            set -euo pipefail
+            CUDA="${{ matrix.cuda }}"
+            TORCH="${{ matrix.torch }}"
+            ID=$(uuidgen | cut -d- -f1)
+            NAME="spot-${GITHUB_RUN_NUMBER}-cu${CUDA//./-}-torch${TORCH//./-}-${ID}"
 
-  build-wheels:
-    needs: [prepare-matrix, launch-spot-runner]
-    strategy:
-      max-parallel: 3
-      fail-fast: false
-      matrix: ${{fromJson(needs.prepare-matrix.outputs.matrix)}}
-    runs-on: [self-hosted, spot, "${{ matrix.cuda }}-${{ matrix.torch }}"]
-    timeout-minutes: 1440
-    
-    container:
-      image: nvidia/cuda:${{ matrix.cuda_full}}-devel-ubuntu22.04
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Install system dependencies
-        run: |
-          sed -i 's|http://archive.ubuntu.com|http://us-central1.gce.archive.ubuntu.com|g' /etc/apt/sources.list
-          apt-get update
-          apt-get install -y git build-essential ninja-build curl python-is-python3 python3-pip
-  
-      - name: Make build script executable
-        run: chmod +x scripts/build_wheel.sh
-      
-      - name: Build wheel
-        id: build
-        run: |
-          scripts/build_wheel.sh ${{ matrix.cuda }} ${{ matrix.torch }} 6
-          
+            gcloud compute instances create "$NAME" \
+              --project=$PROJECT_ID --zone=$ZONE \
+              --machine-type=$MACHINE_TYPE \
+              --provisioning-model=SPOT \
+              --instance-termination-action=DELETE \
+              --boot-disk-size=100 \
+              --boot-disk-type=pd-ssd \
+              --max-run-duration=5h \
+              --image=$IMAGE --image-project=$IMAGE_PROJECT \
+              --metadata=ssh-keys="ubuntu:ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDHClYdm3FsSNxqo7Dsbz3pZbG10Vkm8tQPPEjMhIlCj gha-runner" \
+              --labels=gh-runner=spot,workflow=$GITHUB_RUN_ID
+
+            IP=$(gcloud compute instances describe "$NAME" \
+                  --zone=$ZONE --format="value(networkInterfaces[0].accessConfigs[0].natIP)")
+            for i in {1..30}; do
+              ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+                  -i gha-runner ubuntu@$IP "echo OK" && break || sleep 10
+            done
+
+            ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+                -i gha-runner ubuntu@$IP << 'EOF'
+              set -ex
+              sudo sed -i 's|http://archive.ubuntu.com|http://us-central1.gce.archive.ubuntu.com|g' /etc/apt/sources.list
+              sudo apt-get update
+              sudo apt-get install -y git build-essential ninja-build curl python3-pip docker.io
+
+              curl -sSO https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh
+              sudo bash add-google-cloud-ops-agent-repo.sh --also-install
+              sudo systemctl enable google-cloud-ops-agent
+              sudo systemctl start google-cloud-ops-agent
+
+              git clone https://github.com/${{ github.repository }}.git flash-attention
+              cd flash-attention
+              git checkout ${{ github.sha }} 
+              sudo mkdir -p /tmp/wheels
+              sudo docker run --rm -v $PWD:/workspace -v /tmp/wheels:/tmp/wheels \
+                -e CUDA="${{ matrix.cuda }}" -e TORCH="${{ matrix.torch }}" \
+                nvidia/cuda:${{ matrix.cuda_full }}-devel-ubuntu22.04 \
+                bash -c '
+                  sed -i "s|http://archive.ubuntu.com|http://us-central1.gce.archive.ubuntu.com|g" /etc/apt/sources.list
+                  cd /workspace
+                  apt-get update && apt-get install -y python-is-python3 git ninja-build python3-pip python3-dev
+                  bash scripts/build_wheel.sh ${{ matrix.cuda }} ${{ matrix.torch }} 8 | grep -v "ptxas info" | grep -v "bytes stack frame,"
+                '
+            EOF
+            mkdir -p /tmp/wheels
+            scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+                -i gha-runner -r ubuntu@$IP:/tmp/wheels/*.whl /tmp/wheels/
+
       - name: Upload wheel artifact
         uses: actions/upload-artifact@v4
         with:
@@ -205,62 +175,58 @@ jobs:
           path: /tmp/wheels/*.whl
           retention-days: 7
 
+  all-wheels-done:
+    needs: build-wheels
+    runs-on: ubuntu-latest
+    if: success()
+    steps:
+      - run: echo "All wheels built successfully."
+
   cleanup:
-    needs: [launch-spot-runner, build-wheels]
+    needs: build-wheels
     if: always()
     runs-on: ubuntu-latest
     steps:
       - uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }} 
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
       - uses: google-github-actions/setup-gcloud@v2
-      - name: Stop runners & delete VMs
+      - name: Delete all Spot VMs created by this workflow
         run: |
-          INSTANCES=$(gcloud compute instances list \
-                      --filter="labels.gh-runner=spot" \
-                      --format="value(name)")
-
-          for NAME in $INSTANCES; do
-            echo "==== Processing $NAME ===="
-            gcloud compute instances delete "$NAME" --zone="$ZONE" --quiet
+          gcloud compute instances list \
+            --filter="labels.workflow=${{ github.run_id }} AND labels.gh-runner=spot" \
+            --format="value(name)" | while read -r NAME; do
+            echo "Deleting $NAME"
+            gcloud compute instances stop "$NAME" --zone="$ZONE" --quiet || true
+            gcloud compute instances delete "$NAME" --zone="$ZONE" --quiet || true
           done
 
   create-release:
-    needs: build-wheels
+    needs: all-wheels-done
     runs-on: ubuntu-latest
-    if: always() && !cancelled()
-    
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           path: artifacts
-      
-      - name: Organize wheels
-        run: |
+      - run: |
           mkdir -p release-wheels
           find artifacts -name "*.whl" -exec cp {} release-wheels/ \;
-          ls -la release-wheels/
-      
-      - name: Generate release tag
+          ls -lh release-wheels/
+      - name: Generate tag
         id: tag
         run: |
           DATE_TAG=$(date +'%Y.%m.%d')
           echo "tag=${DATE_TAG}" >> $GITHUB_OUTPUT
           echo "date=${DATE_TAG}" >> $GITHUB_OUTPUT
-      
-      - name: Create Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           name: "Flash-Attention 3 Wheels - ${{ steps.tag.outputs.date }}"
           body: |
             ## Flash-Attention 3 Pre-built Wheels
-            
             **Build Date:** ${{ steps.tag.outputs.date }}
-            
           files: release-wheels/*.whl
           draft: false
           prerelease: false

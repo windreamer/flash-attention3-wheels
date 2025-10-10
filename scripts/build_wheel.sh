@@ -15,6 +15,7 @@ export PATH=${CUDA_HOME}/bin:${PATH}
 export LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}
 export MAX_JOBS=${MAX_JOBS}
 export FLASH_ATTENTION_FORCE_BUILD=TRUE
+export CUDAFLAGS="-t 2"
 
 echo "Installing dependencies..."
 pip install --upgrade pip
@@ -71,6 +72,3 @@ mkdir -p $OUTPUT_DIR
 cp dist/$WHEEL_NAME $OUTPUT_DIR/
 
 echo "Wheel saved to: $OUTPUT_DIR/$WHEEL_NAME"
-echo "build_success=true" >> $GITHUB_OUTPUT
-echo "wheel_path=$OUTPUT_DIR/$WHEEL_NAME" >> $GITHUB_OUTPUT
-echo "wheel_name=$WHEEL_NAME" >> $GITHUB_OUTPUT
