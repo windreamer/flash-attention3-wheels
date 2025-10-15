@@ -1,6 +1,6 @@
 # Flash-Attention 3 Wheels
 
-**Pre-built wheels that erase CUDA / PyTorch compatibility headaches.**
+**Pre-built wheels that erase [Flash Attention 3](https://github.com/Dao-AILab/flash-attention/tree/main/hopper) installation headaches.**
 
 [![Build Flash-Attention 3 Wheels](https://github.com/windreamer/flash-attention3-wheels/actions/workflows/build_wheels.yml/badge.svg)](https://github.com/windreamer/flash-attention3-wheels/actions/workflows/build_wheels.yml)
 
@@ -17,7 +17,7 @@ pip install flash_attn_3 \
 
 ## How to pick the right index
 
-Visit the GitHub Pages site (`https://windreamer.github.io/flash-attention3-wheels`) and choose the link that matches:
+Visit the [GitHub Pages site](https://windreamer.github.io/flash-attention3-wheels) and choose the link that matches:
 
 * CUDA 12.6 → `cu126_torch...`  
 * CUDA 12.8 → `cu128_torch...`  
