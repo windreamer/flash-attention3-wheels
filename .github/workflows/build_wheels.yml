@@ -117,7 +117,16 @@ jobs:
             CUDA="${{ matrix.cuda }}"
             TORCH="${{ matrix.torch }}"
             ID=$(uuidgen | cut -d- -f1)
-            NAME="spot-${GITHUB_RUN_NUMBER}-cu${CUDA//./-}-torch${TORCH//./-}-${ID}"
+            PREFIX="spot-${GITHUB_RUN_NUMBER}-cu${CUDA//./-}-torch${TORCH//./-}"
+            NAME="${PREFIX}-${ID}"
+
+            gcloud compute instances list \
+              --filter="name~'^${PREFIX}' AND zone=${ZONE}" \
+              --format="value(name)" | \
+            while read -r OLD; do
+              [[ -n "$OLD" ]] && \
+                gcloud compute instances delete "$OLD" --zone="$ZONE" --quiet || true
+            done
 
             gcloud compute instances create "$NAME" \
               --project=$PROJECT_ID --zone=$ZONE \
@@ -229,10 +238,16 @@ jobs:
             ## Flash-Attention 3 Pre-built Wheels
             **Build Date:** ${{ steps.tag.outputs.date }}
           files: release-wheels/*.whl
-          draft: false
+          draft: true
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release edit "${{ steps.tag.outputs.tag }}" \
+             --draft=false --repo "${{ github.repository }}"
 
   update-pages:
     needs: create-release
