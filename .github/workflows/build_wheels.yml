@@ -8,11 +8,11 @@ on:
       cuda_versions:
         description: 'CUDA versions to build (comma-separated)'
         required: false
-        default: '12.6,12.8,12.9'
+        default: '12.6,12.8,13.0'
       torch_versions:
         description: 'PyTorch versions to build (comma-separated)'
         required: false
-        default: '2.8.0'
+        default: '2.9.0'
 
 env:
   PROJECT_ID: coherent-vim-471701-r7
@@ -63,8 +63,8 @@ jobs:
               cuda_versions = [x.strip() for x in "${{ github.event.inputs.cuda_versions }}".split(",")]
               torch_versions = [x.strip() for x in "${{ github.event.inputs.torch_versions }}".split(",")]
           else:
-              cuda_versions = ["12.6", "12.8", "12.9"]
-              torch_versions = ["2.8.0"]
+              cuda_versions = ["12.6", "12.8", "13.0"]
+              torch_versions = ["2.8.0", "2.9.0"]
 
           matrix = {"include": []}
 
