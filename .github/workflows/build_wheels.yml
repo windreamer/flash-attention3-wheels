@@ -12,7 +12,7 @@ on:
       torch_versions:
         description: 'PyTorch versions to build (comma-separated)'
         required: false
-        default: '2.9.0'
+        default: '2.8.0,2.9.0'
 
 env:
   PROJECT_ID: coherent-vim-471701-r7
@@ -36,20 +36,18 @@ jobs:
         run: |
           import json, os, re, requests
           url = "https://hub.docker.com/v2/repositories/nvidia/cuda/tags/"
-          params = {"page_size": 100, "name": "ubuntu20.04"}
+          params = {"page_size": 100, "name": "ubuntu22.04"}
           tags = []
           while url:
               resp = requests.get(url, params=params).json()
               tags.extend(resp["results"])
               url = resp.get("next")
-          pattern = re.compile(r"^(\d+)\.(\d+)\.(\d+)-devel-ubuntu20\.04$")
+          pattern = re.compile(r"^(\d+)\.(\d+)\.(\d+)-devel-ubuntu22\.04$")
           matches = []
           for t in tags:
               m = pattern.match(t["name"])
               if m:
                   major, minor, patch = m.groups()
-                  if int(major) < 12 or int(minor) < 6:
-                      continue
                   matches.append((f"{major}.{minor}", int(patch)))
           latest = {}
           for major_minor, patch in matches:
