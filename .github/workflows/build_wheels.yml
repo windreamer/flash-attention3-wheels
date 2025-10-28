@@ -32,56 +32,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Set up build matrix
         id: set-matrix
-        shell: python
-        run: |
-          import json, os, re, requests
-          url = "https://hub.docker.com/v2/repositories/nvidia/cuda/tags/"
-          params = {"page_size": 100, "name": "ubuntu22.04"}
-          tags = []
-          while url:
-              resp = requests.get(url, params=params).json()
-              tags.extend(resp["results"])
-              url = resp.get("next")
-          pattern = re.compile(r"^(\d+)\.(\d+)\.(\d+)-devel-ubuntu22\.04$")
-          matches = []
-          for t in tags:
-              m = pattern.match(t["name"])
-              if m:
-                  major, minor, patch = m.groups()
-                  matches.append((f"{major}.{minor}", int(patch)))
-          latest = {}
-          for major_minor, patch in matches:
-              key = major_minor
-              if key not in latest or patch > latest[key][1]:
-                  latest[key] = (major_minor, patch)
-
-          cuda_full_map = {k: f"{k}.{v[1]}" for k, v in latest.items()}
-
-          if "${{ github.event_name }}" == "workflow_dispatch":
-              cuda_versions = [x.strip() for x in "${{ github.event.inputs.cuda_versions }}".split(",")]
-              torch_versions = [x.strip() for x in "${{ github.event.inputs.torch_versions }}".split(",")]
-          else:
-              cuda_versions = ["12.6", "12.8", "13.0"]
-              torch_versions = ["2.8.0", "2.9.0"]
-
-          matrix = {"include": []}
-
-          for cuda in cuda_versions:
-              cuda = cuda.strip()
-              assert cuda in cuda_full_map
-              cuda_full = cuda_full_map[cuda]
-              for torch in torch_versions:
-                  matrix["include"].append({
-                      "cuda": cuda,
-                      "cuda_full": cuda_full,
-                      "torch": torch.strip(),
-                  })
-
-          matrix_json = json.dumps(matrix, separators=(',', ':'))
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
-              f.write(f"matrix<<EOF\n{matrix_json}\nEOF\n")
-          print("Generated matrix:")
-          print(json.dumps(matrix, indent=2))
+        run: python scripts/generate_matrix.py
 
   build-wheels:
     needs: prepare-matrix
