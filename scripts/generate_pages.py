@@ -16,7 +16,7 @@ WHEEL_RE = re.compile(
     r"torch(?P<torch>\d{3})"  # 280
     r"cxx11abi(?P<abi>true|false)"  # true
     r"[.+][a-f0-9]+"  # dfb664
-    r"-cp(?P<py>\d{2})-.*linux.*\.whl",  # cp39-abi3-linux_x86_64.whl
+    r"-cp(?P<py>\d{2})-.*\.whl",  # cp39-abi3-linux_x86_64.whl
     re.I,
 )
 

@@ -30,6 +30,7 @@ $env:LD_LIBRARY_PATH = "$($env:CUDA_HOME)\lib64;$($env:LD_LIBRARY_PATH)"
 $env:MAX_JOBS = $MaxJobs
 $env:FLASH_ATTENTION_FORCE_BUILD = "TRUE"
 $env:CUDAFLAGS = "-t 2"
+$env:CL = "/w"
 
 Write-Host "Installing dependencies..."
 python -m pip install --upgrade pip
@@ -46,7 +47,8 @@ $gitHash = (git rev-parse --short=6 HEAD).Trim()
 Write-Host "Current git hash: $gitHash"
 
 Write-Host "Building Flash-Attention 3 wheel..."
-python setup.py bdist_wheel
+cmd /c "python setup.py bdist_wheel 2>&1" |
+    Select-String -Pattern 'ptxas info|bytes stack frame,' -NotMatch
 
 $originalWheel = Get-ChildItem -Path dist -Filter *.whl | Select-Object -First 1 -ExpandProperty FullName
 if (-not $originalWheel) {

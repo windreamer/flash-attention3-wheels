@@ -27,11 +27,19 @@ jobs:
   prepare-matrix:
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      linux-matrix: ${{ steps.linux.outputs.matrix }}
+      win-matrix:   ${{ steps.win.outputs.matrix }}
     steps:
       - uses: actions/checkout@v4
-      - name: Set up build matrix
-        id: set-matrix
+      - name: Generate Linux matrix
+        id: linux
+        env:
+          MATRIX_TARGET: linux
+        run: python scripts/generate_matrix.py
+      - name: Generate Windows matrix
+        id: win
+        env:
+          MATRIX_TARGET: windows
         run: python scripts/generate_matrix.py
 
   build-wheels:
@@ -40,7 +48,7 @@ jobs:
     strategy:
       max-parallel: 3
       fail-fast: false
-      matrix: ${{fromJson(needs.prepare-matrix.outputs.matrix)}}
+      matrix: ${{fromJson(needs.prepare-matrix.outputs.linux-matrix)}}
     outputs:
       status: ${{ job.status }}
     steps:

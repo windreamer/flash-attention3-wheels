@@ -34,8 +34,9 @@ if "${{ github.event_name }}" == "workflow_dispatch":
         x.strip() for x in "${{ github.event.inputs.torch_versions }}".split(",")
     ]
 else:
-    cuda_versions = ["12.8", "13.0"]
+    cuda_versions = ["12.6", "12.8", "13.0"]
     torch_versions = ["2.8.0", "2.9.0"]
+
 
 BLACKLIST = {
     "2.8": "12.9",
@@ -45,6 +46,9 @@ BLACKLIST = {
 def ver2tuple(v: str):
     return tuple(map(int, v.split(".")))
 
+target = os.getenv("MATRIX_TARGET", "linux").lower()
+if target == 'windows':
+    cuda_versions = [v for v in cuda_versions if v == '12.8']
 
 matrix = {"include": []}
 
