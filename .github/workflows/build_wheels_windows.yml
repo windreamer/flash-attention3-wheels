@@ -1,0 +1,122 @@
+name: Build Flash-Attention 3 Wheels (Windows)
+
+on:
+  workflow_dispatch:
+    inputs:
+      cuda_versions:
+        description: 'CUDA versions (comma-separated)'
+        required: false
+        default: '12.6,12.8'
+      torch_versions:
+        description: 'PyTorch versions (comma-separated)'
+        required: false
+        default: '2.8.0,2.9.0'
+
+env:
+  CUDA_VERSIONS: ${{ github.event.inputs.cuda_versions || '12.8,13.0' }}
+  TORCH_VERSIONS: ${{ github.event.inputs.torch_versions || '2.8.0,2.9.0' }}
+
+jobs:
+  prepare-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up build matrix
+        id: set-matrix
+        run: python scripts/generate_matrix.py
+
+  build-wheels:
+    needs: prepare-matrix
+    runs-on: windows-latest
+    strategy:
+      max-parallel: 3
+      fail-fast: false
+      matrix: ${{fromJson(needs.prepare-matrix.outputs.matrix)}}
+
+    steps:
+      - name: Enable Windows long-path
+        shell: pwsh
+        run: |
+          New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" `
+                           -Name "LongPathsEnabled" `
+                           -Value 1 -PropertyType DWORD -Force
+          git config --global core.longpaths true
+
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install CUDA ${{ matrix.cuda }}
+        uses: Jimver/cuda-toolkit@v0.2.29
+        with:
+          cuda: ${{ matrix.cuda_full }}
+
+      - name: Build wheel
+        shell: pwsh
+        run: |
+          $env:NVCC_PREPEND_FLAGS='-Xptxas=-v'
+          scripts/build_wheel.ps1 `
+            -CudaVersion "${{ matrix.cuda }}" `
+            -TorchVersion "${{ matrix.torch }}" `
+            -MaxJobs 4
+
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel-win-cu${{ matrix.cuda }}-torch${{ matrix.torch }}
+          path: C:\tmp\wheels\*.whl
+          retention-days: 7
+
+  all-wheels-done:
+    needs: build-wheels
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "All Windows wheels built successfully."
+
+#  create-release:
+#    needs: all-wheels-done
+#    runs-on: ubuntu-latest
+#    outputs:
+#      tag: ${{ steps.tag.outputs.tag }}
+#    steps:
+#      - uses: actions/checkout@v4
+#      - uses: actions/download-artifact@v4
+#        with:
+#          path: artifacts
+#      - run: |
+#          mkdir -p release-wheels
+#          find artifacts -name "*.whl" -exec cp {} release-wheels/ \;
+#          ls -lh release-wheels/
+#      - name: Generate tag
+#        id: tag
+#        run: |
+#          DATE_TAG=$(date +'%Y.%m.%d')
+#          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+#          echo "tag=${DATE_TAG}-${SHORT_SHA}" >> $GITHUB_OUTPUT
+#          echo "date=${DATE_TAG}" >> $GITHUB_OUTPUT
+#      - name: Create / publish release
+#        uses: softprops/action-gh-release@v2
+#        with:
+#          tag_name: ${{ steps.tag.outputs.tag }}
+#          name: "Flash-Attention 3 Wheels (Windows) - ${{ steps.tag.outputs.date }}"
+#          body: |
+#            ## Flash-Attention 3 Pre-built Wheels (Windows)
+#            **Build Date:** ${{ steps.tag.outputs.date }}
+#          files: release-wheels/*.whl
+#          draft: false
+#          prerelease: false
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#
+#  update-pages:
+#    needs: create-release
+#    uses: ./.github/workflows/update-pages.yml
+#    with:
+#      release_tag: ${{ needs.create-release.outputs.tag }}

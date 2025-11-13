@@ -34,7 +34,7 @@ if "${{ github.event_name }}" == "workflow_dispatch":
         x.strip() for x in "${{ github.event.inputs.torch_versions }}".split(",")
     ]
 else:
-    cuda_versions = ["12.6", "12.8", "13.0"]
+    cuda_versions = ["12.8", "13.0"]
     torch_versions = ["2.8.0", "2.9.0"]
 
 BLACKLIST = {
