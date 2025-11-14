@@ -37,7 +37,8 @@ jobs:
 
   build-wheels:
     needs: prepare-matrix
-    runs-on: windows-latest
+    runs-on: "cirun-azure-windows-runner--${{ github.run_id }}"
+    timeout-minutes: 1080
     strategy:
       max-parallel: 3
       fail-fast: false
@@ -53,9 +54,6 @@ jobs:
           git config --global core.longpaths true
 
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -73,7 +71,7 @@ jobs:
           scripts/build_wheel.ps1 `
             -CudaVersion "${{ matrix.cuda }}" `
             -TorchVersion "${{ matrix.torch }}" `
-            -MaxJobs 8
+            -MaxJobs 4
 
       - name: Upload wheel artifact
         uses: actions/upload-artifact@v4

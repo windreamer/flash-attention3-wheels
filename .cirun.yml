@@ -1,0 +1,8 @@
+runners:
+  - name: "azure-windows-runner"
+    cloud: "azure"
+    region: "westus2"
+    instance_type: "Standard_D4ds_v4"
+    machine_image: microsoftvisualstudio:visualstudiowsplustools:vs-2022-com-ws2025-datacenter-azure-gen2:latest
+    labels:
+      - "cirun-azure-windows-runner"
