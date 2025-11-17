@@ -29,7 +29,9 @@ $env:PATH = "$($env:CUDA_HOME)\bin;$($env:PATH)"
 $env:LD_LIBRARY_PATH = "$($env:CUDA_HOME)\lib64;$($env:LD_LIBRARY_PATH)"
 $env:MAX_JOBS = $MaxJobs
 $env:FLASH_ATTENTION_FORCE_BUILD = "TRUE"
-$env:CUDAFLAGS = "-t 2 -diag-suppress 177 -diag-suppress 221"
+$env:CL = "/wd4996"
+$env:NVCC_PREPEND_FLAGS = "-Xptxas=-v -Xcudafe --diag_suppress=177 -Xcudafe --diag_suppress=221 -Xcudafe --diag_suppress=186 -Xcudafe --diag_suppress=550"
+$env:CUDAFLAGS = "-Xptxas=-v -Xcudafe --diag_suppress=177 -Xcudafe --diag_suppress=221 -Xcudafe --diag_suppress=186 -Xcudafe --diag_suppress=550"
 
 Write-Host "Installing dependencies..."
 python -m pip install --upgrade pip

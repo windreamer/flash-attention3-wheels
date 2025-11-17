@@ -67,11 +67,10 @@ jobs:
       - name: Build wheel
         shell: pwsh
         run: |
-          $env:NVCC_PREPEND_FLAGS='-Xptxas=-v'
           scripts/build_wheel.ps1 `
             -CudaVersion "${{ matrix.cuda }}" `
             -TorchVersion "${{ matrix.torch }}" `
-            -MaxJobs 4
+            -MaxJobs 6
 
       - name: Upload wheel artifact
         uses: actions/upload-artifact@v4
