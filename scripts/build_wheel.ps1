@@ -41,7 +41,7 @@ pip install torch==$TorchVersion --index-url "https://download.pytorch.org/whl/c
 
 $workDir = New-TemporaryFile | %{ Remove-Item $_; New-Item -ItemType Directory -Path $_.FullName }
 Set-Location $workDir
-git clone --recursive https://github.com/Dao-AILab/flash-attention.git
+git clone --recursive https://github.com/windreamer/flash-attention.git -b fix_windows_fa3
 Set-Location flash-attention/hopper
 
 $gitHash = (git rev-parse --short=6 HEAD).Trim()
