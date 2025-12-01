@@ -35,7 +35,7 @@ if "${{ github.event_name }}" == "workflow_dispatch":
     ]
 else:
     cuda_versions = ["12.6", "12.8", "13.0"]
-    torch_versions = ["2.8.0", "2.9.0"]
+    torch_versions = ["2.8.0", "2.9.0", "2.9.1"]
 
 
 BLACKLIST = {
