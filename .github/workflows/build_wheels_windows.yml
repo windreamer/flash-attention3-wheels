@@ -40,7 +40,7 @@ jobs:
     runs-on: "cirun-azure-windows-runner--${{ github.run_id }}"
     timeout-minutes: 1080
     strategy:
-      max-parallel: 3
+      max-parallel: 2
       fail-fast: false
       matrix: ${{fromJson(needs.prepare-matrix.outputs.win-matrix)}}
 

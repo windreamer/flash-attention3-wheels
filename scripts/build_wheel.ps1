@@ -31,49 +31,14 @@ $env:MAX_JOBS = $MaxJobs
 $env:FLASH_ATTENTION_FORCE_BUILD = "TRUE"
 $env:CL = "/wd4996"
 $env:NVCC_PREPEND_FLAGS = "-Xcudafe --diag_suppress=177 -Xcudafe --diag_suppress=221 -Xcudafe --diag_suppress=186 -Xcudafe --diag_suppress=550"
+$env:DISTUTILS_USE_SDK = 1
+$env:PYTHONUNBUFFERED = 1
 
 Write-Host "Installing dependencies..."
 python -m pip install --upgrade pip
 pip install ninja packaging wheel setuptools numpy change-wheel-version
 $cuShort = $CudaVersion.Replace(".", "")
 pip install torch==$TorchVersion --index-url "https://download.pytorch.org/whl/cu$cuShort"
-
-Write-Host "Applying PyTorch patch..."
-$torchPath = python -c "import torch; import os; print(os.path.dirname(torch.__file__))"
-$cppExtensionPath = Join-Path $torchPath "utils\cpp_extension.py"
-
-if (-not (Test-Path $cppExtensionPath)) {
-    Write-Error "cpp_extension.py not found at: $cppExtensionPath"
-    exit 1
-}
-
-$content = Get-Content -Path $cppExtensionPath
-
-$targetLine = '            link_rule.append(f''  command = "{cl_path}/link.exe" $in /nologo $ldflags /out:$out'')'
-$lineFound = $false
-$newContent = @()
-
-foreach ($line in $content) {
-    if ($line -eq $targetLine) {
-        $lineFound = $true
-        $newContent += "            print('Linking from pytorch...')"
-        $newContent += '            link_rule.append(f''  command = "{cl_path}/link.exe" /nologo $ldflags /out:$out @$out.rsp'')'
-        $newContent += "            link_rule.append('  rspfile = `$out.rsp')"
-        $newContent += "            link_rule.append('  rspfile_content = `$in_newline')"
-    }
-    else {
-        $newContent += $line
-    }
-}
-
-if (-not $lineFound) {
-    Write-Error "Target line not found in cpp_extension.py"
-    Write-Error "This patch is required for Windows build. Exiting."
-    exit 1
-}
-
-Set-Content -Path $cppExtensionPath -Value $newContent -Force
-Write-Host "Successfully patched cpp_extension.py"
 
 $workDir = New-TemporaryFile | %{ Remove-Item $_; New-Item -ItemType Directory -Path $_.FullName }
 Set-Location $workDir
@@ -83,9 +48,40 @@ Set-Location flash-attention/hopper
 $gitHash = (git rev-parse --short=6 HEAD).Trim()
 Write-Host "Current git hash: $gitHash"
 
+function Find-VcVarsAll {
+    $possiblePaths = @(
+        "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvarsall.bat",
+        "C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build\vcvarsall.bat",
+        "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat"
+    )
+
+    foreach ($path in $possiblePaths) {
+        if (Test-Path $path) {
+            return $path
+        }
+    }
+    return $null
+}
+
+$vcvarsallPath = if ($VsPath) {
+    Join-Path $VsPath "VC\Auxiliary\Build\vcvarsall.bat"
+} else {
+    Find-VcVarsAll
+}
+
+if (-not (Test-Path $vcvarsallPath)) {
+    Write-Error "vcvarsall.bat not found at: $vcvarsallPath"
+    Write-Error "Please ensure Visual Studio 2019 or later with C++ build tools is installed."
+    Write-Error "You can specify the path using -VsPath parameter."
+    exit 1
+}
+
+Write-Host "Initializing Visual Studio build environment..."
+Write-Host "Using vcvarsall.bat: $vcvarsallPath"
+
 Write-Host "Building Flash-Attention 3 wheel..."
-cmd /c "python setup.py bdist_wheel 2>&1" |
-    Select-String -Pattern 'ptxas info|bytes stack frame,' -NotMatch
+$buildCmd = "`"$vcvarsallPath`" x64 && python setup.py bdist_wheel 2>&1"
+cmd /c $buildCmd | Select-String -Pattern 'ptxas info|bytes stack frame,' -NotMatch
 
 $originalWheel = Get-ChildItem -Path dist -Filter *.whl | Select-Object -First 1 -ExpandProperty FullName
 if (-not $originalWheel) {
