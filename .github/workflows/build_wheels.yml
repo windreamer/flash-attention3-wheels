@@ -141,8 +141,54 @@ jobs:
           path: /tmp/wheels/*.whl
           retention-days: 7
 
+  build-win-wheels:
+    needs: prepare-matrix
+    runs-on: "cirun-azure-windows-runner--${{ github.run_id }}"
+    timeout-minutes: 1080
+    strategy:
+      max-parallel: 3
+      fail-fast: false
+      matrix: ${{fromJson(needs.prepare-matrix.outputs.win-matrix)}}
+
+    steps:
+      - name: Enable Windows long-path
+        shell: pwsh
+        run: |
+          New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" `
+                           -Name "LongPathsEnabled" `
+                           -Value 1 -PropertyType DWORD -Force
+          git config --global core.longpaths true
+
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install CUDA ${{ matrix.cuda }}
+        uses: Jimver/cuda-toolkit@v0.2.29
+        with:
+          cuda: ${{ matrix.cuda_full }}
+
+      - name: Build wheel
+        shell: pwsh
+        run: |
+          scripts/build_wheel.ps1 `
+            -CudaVersion "${{ matrix.cuda }}" `
+            -TorchVersion "${{ matrix.torch }}" `
+            -MaxJobs 7
+
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel-win-cu${{ matrix.cuda }}-torch${{ matrix.torch }}
+          path: C:\tmp\wheels\*.whl
+          retention-days: 7
+
   all-wheels-done:
-    needs: build-wheels
+    needs:
+      - build-wheels
+      - build-win-wheels
     runs-on: ubuntu-latest
     if: success()
     steps:
