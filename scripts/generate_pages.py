@@ -99,7 +99,7 @@ class WheelIndexGenerator:
     <h1>Flash-Attention 3 Wheels</h1>
     <p>CUDA {cuda_version}, PyTorch {torch_version}</p>
     <p>Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}</p>
-    
+
     <ul>
 """
 
@@ -135,19 +135,25 @@ class WheelIndexGenerator:
         <p>Generated on: """
             + datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
             + """</p>
+        </div>
     </div>
-    
+
+    <div style="background: #e8f4fd; padding: 15px; border-radius: 5px; margin: 20px 0;">
+        <h2>🚀 Update: Windows Wheels Now Available!</h2>
+        <p>We've successfully built Flash Attention 3 wheels for <strong>Windows</strong> (CUDA 12.8 only for now).</p>
+    </div>
+
     <h2>Installation Instructions</h2>
     <p>Add the appropriate index URL to your pip command:</p>
     <pre><code>pip install flash_attn_3 --find-links https://"""
             + f"{self.repo_owner}.github.io/{self.repo_name}"
             + """/PATH/TO/INDEX</code></pre>
-    
+
     <h2>Available Wheel Indexes</h2>
 """
         )
 
-        for key, wheels in sorted(organized_wheels.items()):
+        for key, wheels in sorted(organized_wheels.items(), reverse=True):
             if not wheels:
                 continue
 
@@ -182,7 +188,7 @@ class WheelIndexGenerator:
             + """</a></li>
         <li><strong>Build Schedule:</strong> Weekly (Sundays at 2 AM UTC)</li>
     </ul>
-    
+
     <h2>Usage Examples</h2>
     <pre><code># Install for CUDA 12.3, PyTorch 2.4.0
 pip install flash_attn_3 --find-links https://"""

@@ -127,7 +127,7 @@ jobs:
                   sed -i "s|http://archive.ubuntu.com|http://us-central1.gce.archive.ubuntu.com|g" /etc/apt/sources.list
                   cd /workspace
                   apt-get update && apt-get install -y python-is-python3 git ninja-build python3-pip python3-dev
-                  bash scripts/build_wheel.sh ${{ matrix.cuda }} ${{ matrix.torch }} 12 | grep -v "ptxas info" | grep -v "bytes stack frame,"
+                  bash scripts/build_wheel.sh ${{ matrix.cuda }} ${{ matrix.torch }} 10 | grep -v "ptxas info" | grep -v "bytes stack frame,"
                 '
             EOF
             mkdir -p /tmp/wheels
