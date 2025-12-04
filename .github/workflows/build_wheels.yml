@@ -141,6 +141,21 @@ jobs:
           path: /tmp/wheels/*.whl
           retention-days: 7
 
+      - name: Cleanup VM
+        run: |
+          set -euo pipefail
+          CUDA="${{ matrix.cuda }}"
+          TORCH="${{ matrix.torch }}"
+          PREFIX="spot-${GITHUB_RUN_NUMBER}-cu${CUDA//./-}-torch${TORCH//./-}"
+
+          gcloud compute instances list \
+            --filter="name~'^${PREFIX}' AND zone=${ZONE}" \
+            --format="value(name)" | \
+          while read -r OLD; do
+            [[ -n "$OLD" ]] && \
+              gcloud compute instances delete "$OLD" --zone="$ZONE" --quiet || true
+          done
+
   build-win-wheels:
     needs: prepare-matrix
     runs-on: "cirun-azure-windows-runner--${{ github.run_id }}"
