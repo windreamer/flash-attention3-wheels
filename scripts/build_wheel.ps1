@@ -81,7 +81,7 @@ Write-Host "Using vcvarsall.bat: $vcvarsallPath"
 
 Write-Host "Building Flash-Attention 3 wheel..."
 $buildCmd = "`"$vcvarsallPath`" x64 && python setup.py bdist_wheel 2>&1"
-cmd /c "$buildCmd 2>&1 | findstr /V `"ptxas info`" | findstr /V `"bytes stack frame,`""
+cmd /c $buildCmd | Select-String -Pattern 'ptxas info|bytes stack frame,' -NotMatch
 
 $originalWheel = Get-ChildItem -Path dist -Filter *.whl | Select-Object -First 1 -ExpandProperty FullName
 if (-not $originalWheel) {
