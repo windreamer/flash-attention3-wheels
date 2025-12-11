@@ -8,7 +8,7 @@
 >
 > **Upstream PR:** Windows compatibility fixes submitted to [Dao-AILab/flash-attention#2047](http://github.com/Dao-AILab/flash-attention/pull/2047)
 >
-> **Note:** Until the PR is merged, wheels are built from our fork: [windreamer/flash-attention@fix_windows_fa3](https://github.com/windreamer/flash-attention/tree/fix_windows_fa3)
+> **Note:** Until the PR is merged, Windows wheels are built from our fork: [windreamer/flash-attention@fix_windows_fa3](https://github.com/windreamer/flash-attention/tree/fix_windows_fa3)
 
 
 ## Quick start
