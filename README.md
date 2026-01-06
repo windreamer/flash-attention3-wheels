@@ -4,7 +4,7 @@
 [![Build Flash-Attention 3 Wheels](https://github.com/windreamer/flash-attention3-wheels/actions/workflows/build_wheels.yml/badge.svg)](https://github.com/windreamer/flash-attention3-wheels/actions/workflows/build_wheels.yml)
 
 > **🚀 Update: Windows Wheels Now Available!** 
-> We've successfully built Flash Attention 3 wheels for **Windows** (CUDA 12.8 only for now).
+> We've successfully built Flash Attention 3 wheels for **Windows** (CUDA 12 only for now).
 >
 > **Upstream PR:** Windows compatibility fixes submitted to [Dao-AILab/flash-attention#2047](http://github.com/Dao-AILab/flash-attention/pull/2047)
 >

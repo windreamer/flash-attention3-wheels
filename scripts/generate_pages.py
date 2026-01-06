@@ -142,7 +142,7 @@ class WheelIndexGenerator:
     <div style="background: #e8f4fd; padding: 15px; border-radius: 5px; margin: 20px 0;">
         <h2>Update</h2>
         <h3>🚀 Windows Wheels Now Available!</h3>
-        <p>We've successfully built Flash Attention 3 wheels for <strong>Windows</strong> (CUDA 12.8 only for now).</p>
+        <p>We've successfully built Flash Attention 3 wheels for <strong>Windows</strong> (CUDA 12 only for now).</p>
     </div>
 
     <h2>Installation Instructions</h2>
@@ -170,7 +170,7 @@ class WheelIndexGenerator:
             html += f"""
     <div class="wheel-section">
         <h3>CUDA {cuda_ver}, PyTorch {torch_ver}</h3>
-        {"<span class='windows-badge'>Windows Support</span>" if cuda_ver == "12.8" else ""}
+        {"<span class='windows-badge'>Windows Support</span>" if cuda_ver in ["12.8", "12.9"] else ""}
         <p class="stats">{wheel_count} wheels available • Last updated: {last_updated}</p>
         <a href="{key}/index.html" class="wheel-link">View Wheels</a>
         <details>
