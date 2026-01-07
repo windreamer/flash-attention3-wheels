@@ -37,7 +37,7 @@ $env:PYTHONUNBUFFERED = 1
 Write-Host "Installing dependencies..."
 python -m pip install --upgrade pip
 pip install ninja packaging wheel setuptools numpy change-wheel-version
-$cuShort = $CudaVersion.Replace(".", "")
+$cuShort = "130"
 pip install torch==$TorchVersion --index-url "https://download.pytorch.org/whl/cu$cuShort"
 
 $workDir = New-TemporaryFile | %{ Remove-Item $_; New-Item -ItemType Directory -Path $_.FullName }
