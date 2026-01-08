@@ -16,7 +16,7 @@ WHEEL_RE = re.compile(
     r"torch(?P<torch>\d{3})"  # 280
     r"cxx11abi(?P<abi>true|false)"  # true
     r"[.+][a-f0-9]+"  # dfb664
-    r"-cp(?P<py>\d{2})-.*\.whl",  # cp39-abi3-linux_x86_64.whl
+    r"-cp(?P<py>\d{2})-.+-(?P<platform>[a-z0-9_]+)\.whl",  # cp39-abi3-linux_x86_64.whl
     re.I,
 )
 
@@ -50,6 +50,7 @@ class WheelIndexGenerator:
             "torch_version": m["torch"],  # 2.4.0
             "cxx11_abi": m["abi"],  # TRUE / FALSE
             "python_version": f"{m['py'][0]}.{m['py'][1:]}",  # 310 -> 3.10
+            "platform": m["platform"],  # linux_x86_64, win_amd64, linux_aarch64
         }
 
     def organize_wheels(self, releases: List[Dict]) -> Dict:
@@ -67,9 +68,9 @@ class WheelIndexGenerator:
 
                         key = f"cu{cuda_ver}_torch{torch_ver}"
                         if key not in organized:
-                            organized[key] = []
+                            organized[key] = {"wheels": [], "tags": set()}
 
-                        organized[key].append(
+                        organized[key]["wheels"].append(
                             {
                                 "filename": info["filename"],
                                 "download_url": asset["browser_download_url"],
@@ -82,6 +83,13 @@ class WheelIndexGenerator:
                                 "torch_version": torch_ver,
                             }
                         )
+
+                        # 检测平台标签
+                        platform = info["platform"]
+                        if "win" in platform:
+                            organized[key]["tags"].add("windows")
+                        elif "aarch64" in platform or "arm64" in platform:
+                            organized[key]["tags"].add("arm64")
 
         return organized
 
@@ -133,6 +141,7 @@ class WheelIndexGenerator:
         .wheel-link:hover { background: #005a9a; }
         .stats { color: #666; font-size: 0.9em; }
         .windows-badge { background: linear-gradient(135deg, #007acc, #005a9a); color: white; padding: 4px 10px; border-radius: 12px; font-size: 0.75em; font-weight: 600; }
+        .arm64-badge { background: linear-gradient(135deg, #00c853, #009624); color: white; padding: 4px 10px; border-radius: 12px; font-size: 0.75em; font-weight: 600; }
         code { background: #f4f4f4; padding: 2px 4px; border-radius: 3px; }
     </style>
     <script type="text/javascript">
@@ -169,22 +178,31 @@ class WheelIndexGenerator:
 """
         )
 
-        for key, wheels in sorted(organized_wheels.items(), reverse=True):
+        for key, group in sorted(organized_wheels.items(), reverse=True):
+            wheels = group["wheels"]
             if not wheels:
                 continue
 
-            cudaver = cuda_ver = wheels[0]["cuda_version"]
-            cuda_ver = f"{cuda_ver[:2]}.{cuda_ver[2:]}"
+            tags = group["tags"]
+            cudaver = wheels[0]["cuda_version"]
+            cuda_ver = f"{cudaver[:2]}.{cudaver[2:]}"
             torch_ver = wheels[0]["torch_version"]
             torch_ver = f"{torch_ver[0]}.{torch_ver[1]}.{torch_ver[2:]}"
 
             wheel_count = len(wheels)
             last_updated = max(w["release_date"] for w in wheels)
 
+            # 生成标签HTML
+            tags_html = ""
+            if "windows" in tags:
+                tags_html += "<span class='windows-badge'>Windows Support</span> "
+            if "arm64" in tags:
+                tags_html += "<span class='arm64-badge'>Arm64 Support</span>"
+
             html += f"""
     <div class="wheel-section">
         <h3>CUDA {cuda_ver}, PyTorch {torch_ver}</h3>
-        {"<span class='windows-badge'>Windows Support</span>" if cuda_ver in ["12.8", "12.9"] else ""}
+        {tags_html}
         <p class="stats">{wheel_count} wheels available • Last updated: {last_updated}</p>
         <a href="{key}/index.html" class="wheel-link">View Wheels</a>
         <details>
@@ -245,7 +263,8 @@ pip install --upgrade flash_attn_3 --find-links https://"""
         (output_path / "index.html").write_text(main_index)
 
         # 为每个组合生成索引页面
-        for key, wheels in organized_wheels.items():
+        for key, group in organized_wheels.items():
+            wheels = group["wheels"]
             if not wheels:
                 continue
 
