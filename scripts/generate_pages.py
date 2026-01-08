@@ -134,15 +134,149 @@ class WheelIndexGenerator:
 <head>
     <title>Flash-Attention 3 Wheels Repository</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        .header { background: #f4f4f4; padding: 20px; border-radius: 5px; }
-        .wheel-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
-        .wheel-link { display: inline-block; margin: 5px; padding: 8px 12px; background: #007acc; color: white; text-decoration: none; border-radius: 3px; }
-        .wheel-link:hover { background: #005a9a; }
-        .stats { color: #666; font-size: 0.9em; }
-        .windows-badge { background: linear-gradient(135deg, #007acc, #005a9a); color: white; padding: 4px 10px; border-radius: 12px; font-size: 0.75em; font-weight: 600; }
-        .arm64-badge { background: linear-gradient(135deg, #00c853, #009624); color: white; padding: 4px 10px; border-radius: 12px; font-size: 0.75em; font-weight: 600; }
-        code { background: #f4f4f4; padding: 2px 4px; border-radius: 3px; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            margin: 24px;
+            background: #ffffff;
+            color: #1a1a1a;
+            line-height: 1.5;
+        }
+        .header {
+            background: #f8f9fa;
+            padding: 24px;
+            border-radius: 12px;
+            margin-bottom: 32px;
+        }
+        .header h1 {
+            margin: 0 0 8px 0;
+            font-size: 32px;
+            font-weight: 700;
+        }
+        .header p {
+            margin: 0;
+            color: #666;
+            font-size: 16px;
+        }
+        .update-banner {
+            background: #e8f4fd;
+            padding: 16px 20px;
+            border-radius: 8px;
+            margin: 24px 0 32px 0;
+            border-left: 4px solid #007acc;
+        }
+        .update-banner h3 {
+            margin: 0 0 4px 0;
+            font-size: 18px;
+            color: #007acc;
+        }
+        .update-banner p {
+            margin: 0;
+            font-size: 14px;
+            color: #333;
+        }
+        h2 {
+            font-size: 24px;
+            margin: 24px 0 16px 0;
+            font-weight: 600;
+        }
+        .wheel-grid { 
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+            max-width: 1200px;
+        }
+        .wheel-card {
+            padding: 16px;
+            background: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+        }
+        .wheel-card:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.12), 0 2px 4px rgba(0,0,0,0.08);
+            transform: translateY(-2px);
+        }
+        .wheel-card h3 {
+            margin: 0 0 8px 0;
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+            line-height: 1.3;
+        }
+        .wheel-card .tags {
+            margin-bottom: 8px;
+            min-height: 22px;
+        }
+        .wheel-card .stats {
+            color: #666;
+            font-size: 12px;
+            margin: 0 0 12px 0;
+            flex-grow: 1;
+        }
+        .wheel-link {
+            display: block;
+            text-align: center;
+            padding: 8px 12px;
+            background: #007acc;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        .wheel-link:hover {
+            background: #005a9a;
+        }
+        .windows-badge, .arm64-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-right: 6px;
+        }
+        .windows-badge {
+            background: linear-gradient(135deg, #007acc, #005a9a);
+            color: white;
+        }
+        .arm64-badge {
+            background: linear-gradient(135deg, #00c853, #009624);
+            color: white;
+        }
+        details { margin-top: 10px; }
+        summary {
+            font-size: 12px;
+            color: #666;
+            cursor: pointer;
+        }
+        summary:hover { color: #007acc; }
+        details code {
+            display: block;
+            margin-top: 6px;
+            padding: 10px;
+            font-size: 11px;
+            border-radius: 6px;
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        pre { margin: 10px 0; }
+        code {
+            background: #f8f9fa;
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+            font-size: 12px;
+        }
+        ul { padding-left: 20px; }
+        p { margin: 8px 0; }
+        .copy-btn { position: absolute; top: 6px; right: 6px; background: none; border: none; cursor: pointer; padding: 4px; font-size: 16px; z-index: 1; }
+        .copy-btn:hover { opacity: 0.7; }
     </style>
     <script type="text/javascript">
         (function(c,l,a,r,i,t,y){
@@ -159,11 +293,9 @@ class WheelIndexGenerator:
         <p>Generated on: """
             + datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
             + """</p>
-        </div>
     </div>
 
-    <div style="background: #e8f4fd; padding: 15px; border-radius: 5px; margin: 20px 0;">
-        <h2>Update</h2>
+    <div class="update-banner">
         <h3>🚀 Windows Wheels Now Available!</h3>
         <p>We've successfully built Flash Attention 3 wheels for <strong>Windows</strong> (CUDA 12 only for now).</p>
     </div>
@@ -175,6 +307,7 @@ class WheelIndexGenerator:
             + """/PATH/TO/INDEX</code></pre>
 
     <h2>Available Wheel Indexes</h2>
+    <div class="wheel-grid">
 """
         )
 
@@ -195,25 +328,32 @@ class WheelIndexGenerator:
             # 生成标签HTML
             tags_html = ""
             if "windows" in tags:
-                tags_html += "<span class='windows-badge'>Windows Support</span> "
+                tags_html += "<span class='windows-badge'>Windows Support</span>"
             if "arm64" in tags:
                 tags_html += "<span class='arm64-badge'>Arm64 Support</span>"
 
             html += f"""
-    <div class="wheel-section">
-        <h3>CUDA {cuda_ver}, PyTorch {torch_ver}</h3>
-        {tags_html}
-        <p class="stats">{wheel_count} wheels available • Last updated: {last_updated}</p>
-        <a href="{key}/index.html" class="wheel-link">View Wheels</a>
-        <details>
-            <summary>Direct pip command</summary>
-            <code>pip install flash_attn_3 --find-links https://{self.repo_owner}.github.io/{self.repo_name}/{key} --extra-index-url https://download.pytorch.org/whl/cu{cudaver} </code>
-        </details>
-    </div>
+        <div class="wheel-card">
+            <h3>CUDA {cuda_ver}, PyTorch {torch_ver}</h3>
+            <div class="tags">{tags_html}</div>
+            <p class="stats">{wheel_count} wheels available • Last updated: {last_updated}</p>
+            <a href="{key}/index.html" class="wheel-link">View Wheels</a>
+            <div class="pip-command" style="position: relative; margin-top: 10px;">
+                <details>
+                    <summary style="font-size: 12px; color: #666; cursor: pointer;">Direct pip command</summary>
+                    <div style="position: relative;">
+                        <button onclick="copyPipCommand(this)" class="copy-btn" title="Copy command">📋</button>
+                        <code style="display: block; margin-top: 6px; padding: 10px; padding-right: 30px; font-size: 11px; border-radius: 6px; background: #f8f9fa; border: 1px solid #e0e0e0; white-space: pre-wrap; word-break: break-all;">pip install flash_attn_3 --find-links https://{self.repo_owner}.github.io/{self.repo_name}/{key} --extra-index-url https://download.pytorch.org/whl/cu{cudaver}</code>
+                    </div>
+                </details>
+            </div>
+        </div>
 """
 
         html += (
             """
+    </div>
+
     <h2>Quick Reference</h2>
     <ul>
         <li><strong>GitHub Repository:</strong> <a href="https://github.com/"""
@@ -239,6 +379,21 @@ pip install flash_attn_3==3.0.0 --find-links https://"""
 pip install --upgrade flash_attn_3 --find-links https://"""
             + f"{self.repo_owner}.github.io/{self.repo_name}"
             + """/cu128_torch280</code></pre>
+
+    <script>
+        function copyPipCommand(button) {
+            const code = button.parentElement.querySelector('code');
+            navigator.clipboard.writeText(code.textContent).then(() => {
+                button.textContent = '✓';
+                setTimeout(() => {
+                    button.textContent = '📋';
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+                alert('Copy failed, please copy manually');
+            });
+        }
+    </script>
 </body>
 </html>"""
         )
