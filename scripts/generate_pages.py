@@ -94,6 +94,13 @@ class WheelIndexGenerator:
 <head>
     <title>Flash-Attention 3 Wheels - CUDA {cuda_version}, PyTorch {torch_version}</title>
     <meta name="api-version" value="2" />
+    <script type="text/javascript">
+        (function(c,l,a,r,i,t,y){{
+            c[a]=c[a]||function(){{(c[a].q=c[a].q||[]).push(arguments)}};
+            t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+            y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+        }})(window, document, "clarity", "script", "uy0pu9bh60");
+    </script>
 </head>
 <body>
     <h1>Flash-Attention 3 Wheels</h1>
@@ -128,6 +135,13 @@ class WheelIndexGenerator:
         .windows-badge { background: linear-gradient(135deg, #007acc, #005a9a); color: white; padding: 4px 10px; border-radius: 12px; font-size: 0.75em; font-weight: 600; }
         code { background: #f4f4f4; padding: 2px 4px; border-radius: 3px; }
     </style>
+    <script type="text/javascript">
+        (function(c,l,a,r,i,t,y){
+            c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+            t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+            y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+        })(window, document, "clarity", "script", "uy0pu9bh60");
+    </script>
 </head>
 <body>
     <div class="header">
