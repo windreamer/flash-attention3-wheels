@@ -27,20 +27,15 @@ for major_minor, patch in matches:
 cuda_full_map = {k: f"{k}.{v[1]}" for k, v in latest.items()}
 target = os.getenv("MATRIX_TARGET", "linux").lower()
 
-if "${{ github.event_name }}" == "workflow_dispatch":
-    cuda_versions = [
-        x.strip() for x in "${{ github.event.inputs.cuda_versions }}".split(",")
-    ]
-    torch_versions = [
-        x.strip() for x in "${{ github.event.inputs.torch_versions }}".split(",")
-    ]
+if target == 'windows':
+    cuda_versions = ["12.8", "12.9"]
+    torch_versions = ["2.9.0"]
+elif target == 'arm':
+    cuda_versions = ["12.9", "13.0"]
+    torch_versions = ["2.8.0", "2.9.1"]
 else:
-    if target == 'windows':
-        cuda_versions = ["12.8", "12.9"]
-        torch_versions = ["2.9.1"]
-    else:
-        cuda_versions = ["12.6", "12.8", "13.0"]
-        torch_versions = ["2.8.0", "2.9.0", "2.9.1"]
+    cuda_versions = ["12.8", "12.9",  "13.0"]
+    torch_versions = ["2.8.0", "2.9.1"]
 
 
 BLACKLIST = {
