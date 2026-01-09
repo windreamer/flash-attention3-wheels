@@ -179,7 +179,7 @@ jobs:
       - name: Create Spot VM and build wheel
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 600
+          timeout_minutes: 1080
           max_attempts: 2
           retry_wait_seconds: 30
           command: |
@@ -205,7 +205,7 @@ jobs:
               --instance-termination-action=DELETE \
               --boot-disk-size=100 \
               --boot-disk-type=pd-ssd \
-              --max-run-duration=5h \
+              --max-run-duration=8h \
               --image=$IMAGE --image-project=$IMAGE_PROJECT \
               --metadata=ssh-keys="ubuntu:ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDHClYdm3FsSNxqo7Dsbz3pZbG10Vkm8tQPPEjMhIlCj gha-runner" \
               --labels=gh-runner=spot,workflow=$GITHUB_RUN_ID
