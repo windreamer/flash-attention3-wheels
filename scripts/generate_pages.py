@@ -297,7 +297,7 @@ class WheelIndexGenerator:
 
     <div class="update-banner">
         <h3>🚀 Windows Wheels Now Available!</h3>
-        <p>We've successfully built Flash Attention 3 wheels for <strong>Windows</strong> (CUDA 12 only for now).</p>
+        <p>We've successfully built Flash Attention 3 wheels for <strong>Windows</strong> (CUDA 12 only for now) and <strong>Arm CUDA SBSA platforms</strong> like GH200.</p>
     </div>
 
     <h2>Installation Instructions</h2>
