@@ -13,7 +13,7 @@ WHEEL_RE = re.compile(
     r"flash_attn_3-(?P<base>\d+\.\d+\.\d+(?:[a-zA-Z]+\d*)?)"  # 3.0.0b1
     r"[.+](?P<date>\d{8})"  # 20250907
     r"[.+]cu(?P<cuda>\d{3})"  # 129
-    r"torch(?P<torch>\d{3})"  # 280
+    r"torch(?P<torch>\d{3,4})"  # 280/2100
     r"cxx11abi(?P<abi>true|false)"  # true
     r"[.+][a-f0-9]+"  # dfb664
     r"-cp(?P<py>\d{2})-.+-(?P<platform>[a-z0-9_]+)\.whl",  # cp39-abi3-linux_x86_64.whl
@@ -66,9 +66,16 @@ class WheelIndexGenerator:
                         cuda_ver = info["cuda_version"]
                         torch_ver = info["torch_version"]
 
-                        key = f"cu{cuda_ver}_torch{torch_ver}"
+                        key = (
+                            (int(cuda_ver[:2]), int(cuda_ver[2:])),
+                            (int(torch_ver[:1]), int(torch_ver[1:-1]), int(torch_ver[-1:])),
+                        )
                         if key not in organized:
-                            organized[key] = {"wheels": [], "tags": set()}
+                            organized[key] = {
+                                "wheels": [],
+                                "tags": set(),
+                                "index_name": f"cu{cuda_ver}_torch{torch_ver}",
+                            }
 
                         organized[key]["wheels"].append(
                             {
@@ -94,9 +101,13 @@ class WheelIndexGenerator:
         return organized
 
     def generate_simple_index(
-        self, wheels: List[Dict], cuda_version: str, torch_version: str
+        self, wheels: List[Dict], cuda_version: Tuple[int], torch_version: Tuple[int]
     ) -> str:
         """生成简单的HTML index页面"""
+
+        cuda_version = '.'.join(map(str, cuda_version))
+        torch_version = '.'.join(map(str, torch_version))
+
         html = f"""<!DOCTYPE html>
 <html>
 <head>
@@ -317,10 +328,11 @@ class WheelIndexGenerator:
                 continue
 
             tags = group["tags"]
+            index_name = group["index_name"]
             cudaver = wheels[0]["cuda_version"]
             cuda_ver = f"{cudaver[:2]}.{cudaver[2:]}"
             torch_ver = wheels[0]["torch_version"]
-            torch_ver = f"{torch_ver[0]}.{torch_ver[1]}.{torch_ver[2:]}"
+            torch_ver = f"{torch_ver[:1]}.{torch_ver[1:-1]}.{torch_ver[-1:]}"
 
             wheel_count = len(wheels)
             last_updated = max(w["release_date"] for w in wheels)
@@ -337,13 +349,13 @@ class WheelIndexGenerator:
             <h3>CUDA {cuda_ver}, PyTorch {torch_ver}</h3>
             <div class="tags">{tags_html}</div>
             <p class="stats">{wheel_count} wheels available • Last updated: {last_updated}</p>
-            <a href="{key}/index.html" class="wheel-link">View Wheels</a>
+            <a href="{index_name}/index.html" class="wheel-link">View Wheels</a>
             <div class="pip-command" style="position: relative; margin-top: 10px;">
                 <details>
                     <summary style="font-size: 12px; color: #666; cursor: pointer;">Direct pip command</summary>
                     <div style="position: relative;">
                         <button onclick="copyPipCommand(this)" class="copy-btn" title="Copy command">📋</button>
-                        <code style="display: block; margin-top: 6px; padding: 10px; padding-right: 30px; font-size: 11px; border-radius: 6px; background: #f8f9fa; border: 1px solid #e0e0e0; white-space: pre-wrap; word-break: break-all;">pip install flash_attn_3 --find-links https://{self.repo_owner}.github.io/{self.repo_name}/{key} --extra-index-url https://download.pytorch.org/whl/cu{cudaver}</code>
+                        <code style="display: block; margin-top: 6px; padding: 10px; padding-right: 30px; font-size: 11px; border-radius: 6px; background: #f8f9fa; border: 1px solid #e0e0e0; white-space: pre-wrap; word-break: break-all;">pip install flash_attn_3 --find-links https://{self.repo_owner}.github.io/{self.repo_name}/{index_name} --extra-index-url https://download.pytorch.org/whl/cu{cudaver}</code>
                     </div>
                 </details>
             </div>
@@ -423,11 +435,13 @@ pip install --upgrade flash_attn_3 --find-links https://"""
             if not wheels:
                 continue
 
-            print(f"Generating index page for {key}...")
+            index_name = group["index_name"]
 
-            cuda_version, torch_version = key.split("_")
+            print(f"Generating index page for {index_name}...")
+
+            cuda_version, torch_version = key
             # 创建子目录
-            subdir = output_path / key
+            subdir = output_path / index_name
             subdir.mkdir(exist_ok=True)
 
             # 生成索引页面
