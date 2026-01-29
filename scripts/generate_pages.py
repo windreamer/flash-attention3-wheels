@@ -300,7 +300,7 @@ class WheelIndexGenerator:
 <body>
     <div class="header">
         <h1>🔥 Flash-Attention 3 Wheels Repository</h1>
-        <p>Pre-built wheels for Flash-Attention 3, updated weekly</p>
+        <p>Pre-built wheels for Flash-Attention 3, updated biweekly</p>
         <p>Generated on: """
             + datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
             + """</p>

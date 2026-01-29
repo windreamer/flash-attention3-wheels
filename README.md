@@ -36,7 +36,7 @@ Each page shows the one-liner you need.
 
 ## When are wheels updated?
 
-* **Weekly**, every Sunday at 22:00 UTC
+* **Biweekly**, every 2nd and 4th Sunday at 22:00 UTC
 * **On demand**, by triggering the workflow manually if you need a fresher build
 
 Releases are tagged with the build date (`2025.10.15`) so you always know how fresh your wheel is.

@@ -2,7 +2,7 @@ name: Build Flash-Attention 3 Wheels
 
 on:
   schedule:
-    - cron: '0 22 * * 0'
+    - cron: '0 22 8-14,22-28 * 0'
   workflow_dispatch:
 
 env:
