@@ -355,7 +355,7 @@ class WheelIndexGenerator:
                     <summary style="font-size: 12px; color: #666; cursor: pointer;">Direct pip command</summary>
                     <div style="position: relative;">
                         <button onclick="copyPipCommand(this)" class="copy-btn" title="Copy command">📋</button>
-                        <code style="display: block; margin-top: 6px; padding: 10px; padding-right: 30px; font-size: 11px; border-radius: 6px; background: #f8f9fa; border: 1px solid #e0e0e0; white-space: pre-wrap; word-break: break-all;">pip install flash_attn_3 --find-links https://{self.repo_owner}.github.io/{self.repo_name}/{index_name} --extra-index-url https://download.pytorch.org/whl/cu{cudaver}</code>
+                        <code style="display: block; margin-top: 6px; padding: 10px; padding-right: 30px; font-size: 11px; border-radius: 6px; background: #f8f9fa; border: 1px solid #e0e0e0; white-space: pre-wrap; word-break: break-all;">pip install flash_attn_3 --find-links https://{self.repo_owner}.github.io/{self.repo_name}/{index_name}</code>
                     </div>
                 </details>
             </div>
