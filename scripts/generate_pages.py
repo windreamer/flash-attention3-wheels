@@ -255,6 +255,7 @@ class WheelIndexGenerator:
             border-radius: 8px;
             margin: 24px 0 32px 0;
             border-left: 4px solid #007acc;
+            max-width: 1200px;
         }
         .update-banner h3 {
             margin: 0 0 4px 0;
@@ -388,28 +389,28 @@ class WheelIndexGenerator:
     </div>
 
     <!-- Download Statistics -->
-    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px; border-radius: 12px; margin-bottom: 32px;max-width: 800px;">
-        <h2 style="margin: 0 0 16px 0; font-size: 20px;">
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px; border-radius: 12px; margin-bottom: 32px;max-width: 600px;">
+        <h2 style="margin: 0 0 16px 0; font-size: 16px;">
             <i class="fas fa-chart-line" style="margin-right: 8px;"></i>📊 Download Statistics
         </h2>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px;">
             <div style="background: rgba(255,255,255,0.15); padding: 16px; border-radius: 8px; text-align: center;">
-                <div style="font-size: 32px; font-weight: bold;">"""
+                <div style="font-size: 20px; font-weight: bold;">"""
             + f"{self.download_stats['total_downloads']:,}"
             + """</div>
-                <div style="font-size: 14px; opacity: 0.9;">Total Downloads</div>
+                <div style="font-size: 12px; opacity: 0.9;">Total Downloads</div>
             </div>
             <div style="background: rgba(255,255,255,0.15); padding: 16px; border-radius: 8px; text-align: center;">
-                <div style="font-size: 32px; font-weight: bold; color: #90EE90;">+"""
+                <div style="font-size: 20px; font-weight: bold; color: #90EE90;">+"""
             + f"{self.download_stats['total_daily_new']:,}"
             + """</div>
-                <div style="font-size: 14px; opacity: 0.9;">Today's New</div>
+                <div style="font-size: 12px; opacity: 0.9;">Today's New</div>
             </div>
             <div style="background: rgba(255,255,255,0.15); padding: 16px; border-radius: 8px; text-align: center;">
-                <div style="font-size: 32px; font-weight: bold;">"""
+                <div style="font-size: 20px; font-weight: bold;">"""
             + f"{len(self.download_stats['daily_new_stats'])}"
             + """</div>
-                <div style="font-size: 14px; opacity: 0.9;">Active Wheels</div>
+                <div style="font-size: 12px; opacity: 0.9;">Active Wheels</div>
             </div>
         </div>
     </div>
@@ -504,7 +505,7 @@ pip install --upgrade flash_attn_3 --find-links https://"""
 
         if self.download_stats["daily_new_stats"]:
             html += """
-    <div style="margin-top: 20px; max-width: 1200px;">
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px; margin-top: 20px; max-width: 1200px;">
         <h3 style="margin: 0 0 12px 0; font-size: 16px;">🔥 Top Daily New Downloads</h3>
         <table style="width: 100%; border-collapse: collapse; font-size: 13px; background: rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden;">
             <thead>
@@ -519,9 +520,9 @@ pip install --upgrade flash_attn_3 --find-links https://"""
             for i, item in enumerate(self.download_stats["daily_new_stats"][:5], 1):
                 html += f"""
                 <tr style="border-top: 1px solid rgba(255,255,255,0.1);">
-                    <td style="padding: 10px; font-family: monospace; font-size: 12px;">{item["file_name"][:50]}{"..." if len(item["file_name"]) > 50 else ""}</td>
-                    <td style="padding: 10px; text-align: right; color: #90EE90; font-weight: bold;">+{item["daily_new"]:,}</td>
-                    <td style="padding: 10px; text-align: right;">{item["download_count"]:,}</td>
+                    <td style="padding: 10px; font-family: monospace; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{item["file_name"]}</td>
+                    <td style="padding: 10px; text-align: right; color: #90EE90; font-weight: bold; white-space: nowrap;">+{item["daily_new"]:,}</td>
+                    <td style="padding: 10px; text-align: right; white-space: nowrap;">{item["download_count"]:,}</td>
                 </tr>
 """
             html += """
@@ -553,6 +554,11 @@ pip install --upgrade flash_attn_3 --find-links https://"""
 
     def generate_all_pages(self, output_dir: str):
         """生成所有页面"""
+        output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
+
+        self.load_cached_stats(output_dir)
+
         print("Fetching releases from GitHub...")
         releases = self.get_releases()
         self.calculate_download_stats(releases)
@@ -560,9 +566,6 @@ pip install --upgrade flash_attn_3 --find-links https://"""
 
         print("Organizing wheels...")
         organized_wheels = self.organize_wheels(releases)
-
-        output_path = Path(output_dir)
-        output_path.mkdir(parents=True, exist_ok=True)
 
         self.save_stats(output_dir)
         # 生成主索引页面
