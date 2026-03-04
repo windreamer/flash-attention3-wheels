@@ -9,8 +9,6 @@
 > **🚀 Update: We've successfully built Flash Attention 3 wheels for **Windows** (CUDA 12 only for now) and **Arm CUDA SBSA platforms** like GH200!
 >
 > **Upstream PR:** Windows compatibility fixes submitted to [Dao-AILab/flash-attention#2047](http://github.com/Dao-AILab/flash-attention/pull/2047)
->
-> **Note:** Until the PR is merged, Windows wheels are built from our fork: [windreamer/flash-attention@fix_windows_fa3](https://github.com/windreamer/flash-attention/tree/fix_windows_fa3)
 
 
 ## Quick start
