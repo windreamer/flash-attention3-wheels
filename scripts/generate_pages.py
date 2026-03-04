@@ -20,6 +20,8 @@ WHEEL_RE = re.compile(
     re.I,
 )
 
+CACHE_FILE = "download_stats.json"
+
 
 class WheelIndexGenerator:
     def __init__(self, repo_owner: str, repo_name: str, token: str = None):
@@ -28,6 +30,13 @@ class WheelIndexGenerator:
         self.token = token
         self.base_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}"
         self.headers = {}
+        self.download_stats = {
+            "file_stats": [],
+            "total_downloads": 0,
+            "total_daily_new": 0,
+            "daily_new_stats": [],
+        }
+        self.yesterday_stats = {"file_stats": [], "total_downloads": 0}
         if token:
             self.headers["Authorization"] = f"token {token}"
 
@@ -37,6 +46,74 @@ class WheelIndexGenerator:
         response = requests.get(url, headers=self.headers)
         response.raise_for_status()
         return response.json()
+
+    def load_cached_stats(self, output_dir: str):
+        """Load yesterday's stats from cache file"""
+        cache_path = Path(output_dir) / CACHE_FILE
+        if cache_path.exists():
+            try:
+                with open(cache_path) as f:
+                    self.yesterday_stats = json.load(f)
+                print(f"Loaded cached stats from {cache_path}")
+            except Exception as e:
+                print(f"Failed to load cache: {e}")
+        else:
+            print("No cached stats found, starting fresh")
+
+    def calculate_download_stats(self, releases: List[Dict]):
+        """Calculate download statistics from releases"""
+        yesterday_files = {
+            f"{item['file_name']}@{item['release']}": item
+            for item in self.yesterday_stats.get("file_stats", [])
+        }
+
+        file_stats = []
+        daily_new_stats = []
+        total_downloads = 0
+        yesterday_total = self.yesterday_stats.get("total_downloads", 0)
+
+        for release in releases:
+            release_name = release["tag_name"]
+            for asset in release.get("assets", []):
+                if not asset["name"].endswith(".whl"):
+                    continue
+
+                current_count = asset["download_count"]
+                total_downloads += current_count
+
+                file_key = f"{asset['name']}@{release_name}"
+                yesterday_count = yesterday_files.get(file_key, {}).get(
+                    "download_count", 0
+                )
+                daily_new = max(0, current_count - yesterday_count)
+
+                file_info = {
+                    "file_name": asset["name"],
+                    "release": release_name,
+                    "download_count": current_count,
+                    "daily_new": daily_new,
+                }
+                file_stats.append(file_info)
+
+                if daily_new > 0:
+                    daily_new_stats.append(file_info)
+
+        file_stats.sort(key=lambda x: x["download_count"], reverse=True)
+        daily_new_stats.sort(key=lambda x: x["daily_new"], reverse=True)
+
+        self.download_stats = {
+            "file_stats": file_stats,
+            "daily_new_stats": daily_new_stats,
+            "total_downloads": total_downloads,
+            "total_daily_new": total_downloads - yesterday_total,
+        }
+
+    def save_stats(self, output_dir: str):
+        """Save stats for tomorrow's comparison"""
+        cache_path = Path(output_dir) / CACHE_FILE
+        with open(cache_path, "w") as f:
+            json.dump(self.download_stats, f, indent=2)
+        print(f"Saved stats to {cache_path}")
 
     def parse_wheel_info(self, filename: str) -> dict | None:
         m = WHEEL_RE.match(filename)
@@ -68,7 +145,11 @@ class WheelIndexGenerator:
 
                         key = (
                             (int(cuda_ver[:2]), int(cuda_ver[2:])),
-                            (int(torch_ver[:1]), int(torch_ver[1:-1]), int(torch_ver[-1:])),
+                            (
+                                int(torch_ver[:1]),
+                                int(torch_ver[1:-1]),
+                                int(torch_ver[-1:]),
+                            ),
                         )
                         if key not in organized:
                             organized[key] = {
@@ -105,8 +186,8 @@ class WheelIndexGenerator:
     ) -> str:
         """生成简单的HTML index页面"""
 
-        cuda_version = '.'.join(map(str, cuda_version))
-        torch_version = '.'.join(map(str, torch_version))
+        cuda_version = ".".join(map(str, cuda_version))
+        torch_version = ".".join(map(str, torch_version))
 
         html = f"""<!DOCTYPE html>
 <html>
@@ -124,7 +205,7 @@ class WheelIndexGenerator:
 <body>
     <h1>Flash-Attention 3 Wheels</h1>
     <p>CUDA {cuda_version}, PyTorch {torch_version}</p>
-    <p>Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}</p>
+    <p>Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")}</p>
 
     <ul>
 """
@@ -190,7 +271,7 @@ class WheelIndexGenerator:
             margin: 24px 0 16px 0;
             font-weight: 600;
         }
-        .wheel-grid { 
+        .wheel-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 16px;
@@ -306,6 +387,33 @@ class WheelIndexGenerator:
             + """</p>
     </div>
 
+    <!-- Download Statistics -->
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px; border-radius: 12px; margin-bottom: 32px;max-width: 800px;">
+        <h2 style="margin: 0 0 16px 0; font-size: 20px;">
+            <i class="fas fa-chart-line" style="margin-right: 8px;"></i>📊 Download Statistics
+        </h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+            <div style="background: rgba(255,255,255,0.15); padding: 16px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 32px; font-weight: bold;">"""
+            + f"{self.download_stats['total_downloads']:,}"
+            + """</div>
+                <div style="font-size: 14px; opacity: 0.9;">Total Downloads</div>
+            </div>
+            <div style="background: rgba(255,255,255,0.15); padding: 16px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 32px; font-weight: bold; color: #90EE90;">+"""
+            + f"{self.download_stats['total_daily_new']:,}"
+            + """</div>
+                <div style="font-size: 14px; opacity: 0.9;">Today's New</div>
+            </div>
+            <div style="background: rgba(255,255,255,0.15); padding: 16px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 32px; font-weight: bold;">"""
+            + f"{len(self.download_stats['daily_new_stats'])}"
+            + """</div>
+                <div style="font-size: 14px; opacity: 0.9;">Active Wheels</div>
+            </div>
+        </div>
+    </div>
+
     <div class="update-banner">
         <h3>🚀 Windows Wheels Now Available!</h3>
         <p>We've successfully built Flash Attention 3 wheels for <strong>Windows</strong> (CUDA 12 only for now) and <strong>Arm CUDA SBSA platforms</strong> like GH200.</p>
@@ -391,6 +499,38 @@ pip install flash_attn_3==3.0.0 --find-links https://"""
 pip install --upgrade flash_attn_3 --find-links https://"""
             + f"{self.repo_owner}.github.io/{self.repo_name}"
             + """/cu128_torch280</code></pre>
+"""
+        )
+
+        if self.download_stats["daily_new_stats"]:
+            html += """
+    <div style="margin-top: 20px; max-width: 1200px;">
+        <h3 style="margin: 0 0 12px 0; font-size: 16px;">🔥 Top Daily New Downloads</h3>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px; background: rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden;">
+            <thead>
+                <tr style="background: rgba(0,0,0,0.2);">
+                    <th style="padding: 10px; text-align: left;">Wheel</th>
+                    <th style="padding: 10px; text-align: right;">Daily New</th>
+                    <th style="padding: 10px; text-align: right;">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+"""
+            for i, item in enumerate(self.download_stats["daily_new_stats"][:5], 1):
+                html += f"""
+                <tr style="border-top: 1px solid rgba(255,255,255,0.1);">
+                    <td style="padding: 10px; font-family: monospace; font-size: 12px;">{item["file_name"][:50]}{"..." if len(item["file_name"]) > 50 else ""}</td>
+                    <td style="padding: 10px; text-align: right; color: #90EE90; font-weight: bold;">+{item["daily_new"]:,}</td>
+                    <td style="padding: 10px; text-align: right;">{item["download_count"]:,}</td>
+                </tr>
+"""
+            html += """
+            </tbody>
+        </table>
+    </div>
+"""
+
+        html += """
 
     <script>
         function copyPipCommand(button) {
@@ -408,7 +548,6 @@ pip install --upgrade flash_attn_3 --find-links https://"""
     </script>
 </body>
 </html>"""
-        )
 
         return html
 
@@ -416,6 +555,7 @@ pip install --upgrade flash_attn_3 --find-links https://"""
         """生成所有页面"""
         print("Fetching releases from GitHub...")
         releases = self.get_releases()
+        self.calculate_download_stats(releases)
         print(f"Found {len(releases)} releases")
 
         print("Organizing wheels...")
@@ -424,6 +564,7 @@ pip install --upgrade flash_attn_3 --find-links https://"""
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
 
+        self.save_stats(output_dir)
         # 生成主索引页面
         print("Generating main index page...")
         main_index = self.generate_main_index(organized_wheels)
