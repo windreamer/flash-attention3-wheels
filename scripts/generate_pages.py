@@ -10,7 +10,7 @@ from typing import Dict, List, Tuple
 import jinja2
 import requests
 
-TEMPLATES_DIR = Path(__file__).parent / "templates"
+TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 
 WHEEL_RE = re.compile(
     r"flash_attn_3-(?P<base>\d+\.\d+\.\d+(?:[a-zA-Z]+\d*)?)"  # 3.0.0b1
