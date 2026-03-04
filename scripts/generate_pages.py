@@ -249,6 +249,43 @@ class WheelIndexGenerator:
             color: #666;
             font-size: 16px;
         }
+
+        /* Download statistics block */
+        .stats-panel {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 24px;
+            border-radius: 12px;
+            margin-bottom: 32px;
+            max-width: 600px;
+        }
+        .stats-panel__title {
+            margin: 0 0 16px 0;
+            font-size: 16px;
+        }
+        .stats-panel__grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+        }
+        .stat-card {
+            background: rgba(255,255,255,0.15);
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-card__value {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .stat-card__value--positive {
+            color: #90EE90;
+        }
+        .stat-card__label {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
         .update-banner {
             background: #e8f4fd;
             padding: 16px 20px;
@@ -340,6 +377,7 @@ class WheelIndexGenerator:
             background: linear-gradient(135deg, #00c853, #009624);
             color: white;
         }
+
         details { margin-top: 10px; }
         summary {
             font-size: 12px;
@@ -347,17 +385,7 @@ class WheelIndexGenerator:
             cursor: pointer;
         }
         summary:hover { color: #007acc; }
-        details code {
-            display: block;
-            margin-top: 6px;
-            padding: 10px;
-            font-size: 11px;
-            border-radius: 6px;
-            background: #f8f9fa;
-            border: 1px solid #e0e0e0;
-            white-space: pre-wrap;
-            word-break: break-all;
-        }
+
         pre { margin: 10px 0; }
         code {
             background: #f8f9fa;
@@ -366,11 +394,97 @@ class WheelIndexGenerator:
             font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
             font-size: 12px;
         }
+
+        /* Pip command block inside card */
+        .pip-command {
+            position: relative;
+            margin-top: 10px;
+        }
+        .pip-command__wrap {
+            position: relative;
+        }
+        .pip-command__code {
+            display: block;
+            margin-top: 6px;
+            padding: 10px;
+            padding-right: 30px;
+            font-size: 11px;
+            border-radius: 6px;
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            font-size: 16px;
+            z-index: 1;
+        }
+        .copy-btn:hover { opacity: 0.7; }
+
+        /* Daily new table */
+        .daily-new-panel {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 24px;
+            margin-top: 20px;
+            max-width: 1200px;
+        }
+        .daily-new-panel__title {
+            margin: 0 0 12px 0;
+            font-size: 16px;
+        }
+        .daily-new-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .daily-new-table thead tr {
+            background: rgba(0,0,0,0.2);
+        }
+        .daily-new-table th {
+            padding: 10px;
+            text-align: left;
+        }
+        .daily-new-table th.is-right {
+            text-align: right;
+        }
+        .daily-new-table tbody tr {
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        .daily-new-table td {
+            padding: 10px;
+        }
+        .daily-new-table td.is-right {
+            text-align: right;
+            white-space: nowrap;
+        }
+        .daily-new-table td.filename {
+            font-family: monospace;
+            font-size: 12px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .daily-new-table td.daily {
+            color: #90EE90;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
         ul { padding-left: 20px; }
         p { margin: 8px 0; }
-        .copy-btn { position: absolute; top: 6px; right: 6px; background: none; border: none; cursor: pointer; padding: 4px; font-size: 16px; z-index: 1; }
-        .copy-btn:hover { opacity: 0.7; }
     </style>
+
     <script type="text/javascript">
         (function(c,l,a,r,i,t,y){
             c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
@@ -389,28 +503,26 @@ class WheelIndexGenerator:
     </div>
 
     <!-- Download Statistics -->
-    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px; border-radius: 12px; margin-bottom: 32px;max-width: 600px;">
-        <h2 style="margin: 0 0 16px 0; font-size: 16px;">
-            <i class="fas fa-chart-line" style="margin-right: 8px;"></i>📊 Download Statistics
-        </h2>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px;">
-            <div style="background: rgba(255,255,255,0.15); padding: 16px; border-radius: 8px; text-align: center;">
-                <div style="font-size: 20px; font-weight: bold;">"""
+    <div class="stats-panel">
+        <h2 class="stats-panel__title">📊 Download Statistics</h2>
+        <div class="stats-panel__grid">
+            <div class="stat-card">
+                <div class="stat-card__value">"""
             + f"{self.download_stats['total_downloads']:,}"
             + """</div>
-                <div style="font-size: 12px; opacity: 0.9;">Total Downloads</div>
+                <div class="stat-card__label">Total Downloads</div>
             </div>
-            <div style="background: rgba(255,255,255,0.15); padding: 16px; border-radius: 8px; text-align: center;">
-                <div style="font-size: 20px; font-weight: bold; color: #90EE90;">+"""
+            <div class="stat-card">
+                <div class="stat-card__value stat-card__value--positive">+"""
             + f"{self.download_stats['total_daily_new']:,}"
             + """</div>
-                <div style="font-size: 12px; opacity: 0.9;">Today's New</div>
+                <div class="stat-card__label">Today's New</div>
             </div>
-            <div style="background: rgba(255,255,255,0.15); padding: 16px; border-radius: 8px; text-align: center;">
-                <div style="font-size: 20px; font-weight: bold;">"""
+            <div class="stat-card">
+                <div class="stat-card__value">"""
             + f"{len(self.download_stats['daily_new_stats'])}"
             + """</div>
-                <div style="font-size: 12px; opacity: 0.9;">Active Wheels</div>
+                <div class="stat-card__label">Active Wheels</div>
             </div>
         </div>
     </div>
@@ -446,7 +558,6 @@ class WheelIndexGenerator:
             wheel_count = len(wheels)
             last_updated = max(w["release_date"] for w in wheels)
 
-            # 生成标签HTML
             tags_html = ""
             if "windows" in tags:
                 tags_html += "<span class='windows-badge'>Windows Support</span>"
@@ -459,12 +570,13 @@ class WheelIndexGenerator:
             <div class="tags">{tags_html}</div>
             <p class="stats">{wheel_count} wheels available • Last updated: {last_updated}</p>
             <a href="{index_name}/index.html" class="wheel-link">View Wheels</a>
-            <div class="pip-command" style="position: relative; margin-top: 10px;">
+
+            <div class="pip-command">
                 <details>
-                    <summary style="font-size: 12px; color: #666; cursor: pointer;">Direct pip command</summary>
-                    <div style="position: relative;">
+                    <summary>Direct pip command</summary>
+                    <div class="pip-command__wrap">
                         <button onclick="copyPipCommand(this)" class="copy-btn" title="Copy command">📋</button>
-                        <code style="display: block; margin-top: 6px; padding: 10px; padding-right: 30px; font-size: 11px; border-radius: 6px; background: #f8f9fa; border: 1px solid #e0e0e0; white-space: pre-wrap; word-break: break-all;">pip install flash_attn_3 --find-links https://{self.repo_owner}.github.io/{self.repo_name}/{index_name}</code>
+                        <code class="pip-command__code">pip install flash_attn_3 --find-links https://{self.repo_owner}.github.io/{self.repo_name}/{index_name}</code>
                     </div>
                 </details>
             </div>
@@ -505,24 +617,24 @@ pip install --upgrade flash_attn_3 --find-links https://"""
 
         if self.download_stats["daily_new_stats"]:
             html += """
-    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px; margin-top: 20px; max-width: 1200px;">
-        <h3 style="margin: 0 0 12px 0; font-size: 16px;">🔥 Top Daily New Downloads</h3>
-        <table style="width: 100%; border-collapse: collapse; font-size: 13px; background: rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden;">
+    <div class="daily-new-panel">
+        <h3 class="daily-new-panel__title">🔥 Top Daily New Downloads</h3>
+        <table class="daily-new-table">
             <thead>
-                <tr style="background: rgba(0,0,0,0.2);">
-                    <th style="padding: 10px; text-align: left;">Wheel</th>
-                    <th style="padding: 10px; text-align: right;">Daily New</th>
-                    <th style="padding: 10px; text-align: right;">Total</th>
+                <tr>
+                    <th>Wheel</th>
+                    <th class="is-right">Daily New</th>
+                    <th class="is-right">Total</th>
                 </tr>
             </thead>
             <tbody>
 """
-            for i, item in enumerate(self.download_stats["daily_new_stats"][:5], 1):
+            for item in self.download_stats["daily_new_stats"][:5]:
                 html += f"""
-                <tr style="border-top: 1px solid rgba(255,255,255,0.1);">
-                    <td style="padding: 10px; font-family: monospace; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{item["file_name"]}</td>
-                    <td style="padding: 10px; text-align: right; color: #90EE90; font-weight: bold; white-space: nowrap;">+{item["daily_new"]:,}</td>
-                    <td style="padding: 10px; text-align: right; white-space: nowrap;">{item["download_count"]:,}</td>
+                <tr>
+                    <td class="filename">{item["file_name"]}</td>
+                    <td class="is-right daily">+{item["daily_new"]:,}</td>
+                    <td class="is-right">{item["download_count"]:,}</td>
                 </tr>
 """
             html += """
