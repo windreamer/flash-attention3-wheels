@@ -38,7 +38,7 @@ jobs:
           python-version: '3.11'
       - name: Install dependencies
         run: |
-          pip install requests
+          pip install requests jinja2
       - name: Restore download stats
         uses: actions/cache@v3
         with:
