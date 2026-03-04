@@ -594,7 +594,7 @@ class WheelIndexGenerator:
             + """">https://github.com/"""
             + f"{self.repo_owner}/{self.repo_name}"
             + """</a></li>
-        <li><strong>Build Schedule:</strong> Weekly (Sundays at 2 AM UTC)</li>
+        <li><strong>Build Schedule:</strong> Bi-weekly (Sundays at 2 AM UTC)</li>
     </ul>
 
     <h2>Usage Examples</h2>
