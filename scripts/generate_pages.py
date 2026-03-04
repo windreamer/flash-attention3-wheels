@@ -3,6 +3,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Tuple
@@ -246,6 +247,9 @@ class WheelIndexGenerator:
         organized_wheels = self.organize_wheels(releases)
 
         self.save_stats(output_dir)
+        # Copy favicon
+        shutil.copy(TEMPLATES_DIR / "favicon.svg", output_path / "favicon.svg")
+
         # 生成主索引页面
         print("Generating main index page...")
         main_index = self.generate_main_index(organized_wheels)
