@@ -72,78 +72,40 @@ try {
 if ($isCuda13) {
     Write-Host "CUDA 13.0+ detected, applying C2719 alignment fix for Windows..."
 
-    # MSVC maximum supported alignment for function parameters is 64 bytes.
-    $maxMsvcAlignment = 64
-
     # --- Patch 1: cutlass cute/container/alignment.hpp ---
-    # Add CUTE_ALIGNAS_HOST_SAFE macro that caps host-side alignment at
-    # $maxMsvcAlignment on MSVC, keeping the original value elsewhere.
-    # Try known submodule locations first to avoid a slow full-tree search.
-    $alignmentHpp = $null
-    $cutlassSearchRoots = @(
-        "csrc\cutlass\include\cute\container\alignment.hpp",
-        "third_party\cutlass\include\cute\container\alignment.hpp"
-    )
-    foreach ($rel in $cutlassSearchRoots) {
-        $candidate = Join-Path (Get-Location) $rel
-        if (Test-Path $candidate) {
-            $alignmentHpp = $candidate
-            break
+    # Adds CUTE_ALIGNAS_HOST_SAFE macro that caps host-side alignment at 64 bytes
+    # on MSVC, applied with git apply inside the cutlass submodule git repo.
+    $cutlassRoot = Join-Path (Get-Location) "csrc\cutlass"
+    if (Test-Path $cutlassRoot) {
+        Write-Host "Applying cutlass alignment fix..."
+        $cutlassPatch = Join-Path $PSScriptRoot "cutlass_alignment_fix.patch"
+        Push-Location $cutlassRoot
+        try {
+            git apply --ignore-whitespace $cutlassPatch
+            if ($LASTEXITCODE -ne 0) {
+                Write-Error "Failed to apply cutlass alignment fix patch"
+                exit 1
+            }
+        } finally {
+            Pop-Location
         }
-    }
-    if (-not $alignmentHpp) {
-        # Fall back to a bounded recursive search if the submodule is in an unexpected location.
-        $alignmentHpp = Get-ChildItem -Path . -Recurse -Depth 10 -Filter "alignment.hpp" |
-            Where-Object { ($_.DirectoryName -replace '\\', '/') -match 'cute/container' } |
-            Select-Object -First 1 -ExpandProperty FullName
-    }
-
-    if ($alignmentHpp) {
-        Write-Host "Patching cutlass alignment.hpp: $alignmentHpp"
-        $src = [System.IO.File]::ReadAllText($alignmentHpp)
-
-        # Insert CUTE_ALIGNAS_HOST_SAFE definition after CUTE_ALIGNAS in the __CUDACC__ branch.
-        $src = $src -replace `
-            '(?m)^(#\s*define CUTE_ALIGNAS\(n\) __align__\(n\))([ \t]*)$', `
-            "`$1`$2`n#  if defined(_MSC_VER)`n#    define CUTE_ALIGNAS_HOST_SAFE(n) __align__($maxMsvcAlignment)`n#  else`n#    define CUTE_ALIGNAS_HOST_SAFE(n) __align__(n)`n#  endif"
-
-        # Insert CUTE_ALIGNAS_HOST_SAFE definition after CUTE_ALIGNAS in the non-CUDACC branch.
-        $src = $src -replace `
-            '(?m)^(#\s*define CUTE_ALIGNAS\(n\) alignas\(n\))([ \t]*)$', `
-            "`$1`$2`n#  define CUTE_ALIGNAS_HOST_SAFE(n) alignas(n)"
-
-        # Use CUTE_ALIGNAS_HOST_SAFE for the 128- and 256-byte aligned_struct specialisations.
-        $src = $src -replace 'CUTE_ALIGNAS\(128\)(\s+aligned_struct<128)', 'CUTE_ALIGNAS_HOST_SAFE(128)$1'
-        $src = $src -replace 'CUTE_ALIGNAS\(256\)(\s+aligned_struct<256)', 'CUTE_ALIGNAS_HOST_SAFE(256)$1'
-
-        [System.IO.File]::WriteAllText($alignmentHpp, $src)
-        Write-Host "Patched cutlass alignment.hpp successfully"
+        Write-Host "Cutlass alignment fix applied successfully"
     } else {
-        Write-Warning "cutlass alignment.hpp not found, skipping patch"
+        Write-Warning "Cutlass submodule not found at $cutlassRoot, skipping patch"
     }
 
     # --- Patch 2: CUDA toolkit cuda.h (CUtensorMap alignment) ---
-    # MSVC rejects types aligned beyond $maxMsvcAlignment bytes when used as
-    # function parameters.  Lower the CUtensorMap_st alignment accordingly.
-    # The struct uses two preprocessor branches (C++ alignas and C11 _Alignas),
-    # so each is replaced separately via targeted non-greedy patterns.
-    $cudaH = Join-Path $env:CUDA_HOME "include\cuda.h"
-    if (Test-Path $cudaH) {
-        Write-Host "Patching cuda.h: $cudaH"
-        $src = [System.IO.File]::ReadAllText($cudaH)
-
-        $src = [regex]::Replace($src,
-            '(?s)(typedef struct CUtensorMap_st \{.*?)alignas\(128\)',
-            "`${1}alignas($maxMsvcAlignment)")
-        $src = [regex]::Replace($src,
-            '(?s)(typedef struct CUtensorMap_st \{.*?)_Alignas\(128\)',
-            "`${1}_Alignas($maxMsvcAlignment)")
-
-        [System.IO.File]::WriteAllText($cudaH, $src)
-        Write-Host "Patched cuda.h successfully"
-    } else {
-        Write-Warning "cuda.h not found at $cudaH, skipping patch"
+    # Lowers CUtensorMap_st alignment from 128 to 64 bytes so that the type can
+    # be used as a function parameter without triggering C2719.
+    # Applied with the patch utility bundled with Git for Windows.
+    Write-Host "Applying cuda.h alignment fix..."
+    $cudaHPatch = Join-Path $PSScriptRoot "cuda_h_alignment_fix.patch"
+    & patch --fuzz 2 -p1 --directory $env:CUDA_HOME -i $cudaHPatch
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Failed to apply cuda.h alignment fix patch"
+        exit 1
     }
+    Write-Host "cuda.h alignment fix applied successfully"
 }
 
 Set-Location hopper
