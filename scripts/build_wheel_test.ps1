@@ -56,6 +56,73 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "Patch applied successfully"
 
+# For CUDA 13.0+, apply Windows C2719 alignment workaround.
+# MSVC does not support function-parameter alignment > 64 bytes, which causes
+# "error C2719: formal parameter with requested alignment of 128 won't be aligned"
+# when compiling NVCC-generated stub code.  The fix caps host-side alignment at
+# 64 bytes in cutlass and in the CUDA toolkit header.
+# Reference: https://github.com/SystemPanic/vllm-windows/issues/41
+$isCuda13 = $false
+try {
+    $cudaVer = [Version]$CudaVersion
+    $isCuda13 = ($cudaVer -ge [Version]"13.0")
+} catch {
+    Write-Warning "Could not parse CUDA version '$CudaVersion' for alignment-fix check; skipping."
+}
+if ($isCuda13) {
+    Write-Host "CUDA 13.0+ detected, applying C2719 alignment fix for Windows..."
+
+    # --- Patch 1: cutlass cute/container/alignment.hpp ---
+    # Adds CUTE_ALIGNAS_HOST_SAFE macro that caps host-side alignment at 64 bytes
+    # on MSVC, applied with git apply inside the cutlass submodule git repo.
+    $cutlassRoot = Join-Path (Get-Location) "csrc\cutlass"
+    if (Test-Path $cutlassRoot) {
+        Write-Host "Applying cutlass alignment fix..."
+        $cutlassPatch = Join-Path $PSScriptRoot "cutlass_alignment_fix.patch"
+        Push-Location $cutlassRoot
+        try {
+            git apply --ignore-whitespace $cutlassPatch
+            if ($LASTEXITCODE -ne 0) {
+                Write-Error "Failed to apply cutlass alignment fix patch"
+                exit 1
+            }
+        } finally {
+            Pop-Location
+        }
+        Write-Host "Cutlass alignment fix applied successfully"
+    } else {
+        Write-Warning "Cutlass submodule not found at $cutlassRoot, skipping patch"
+    }
+
+    # --- Patch 2: CUDA toolkit cuda.h (CUtensorMap alignment) ---
+    # Lowers CUtensorMap_st alignment from 128 to 64 bytes so that the type can
+    # be used as a function parameter without triggering C2719.
+    # Applied with patch.exe bundled with Git for Windows (in Git\usr\bin\).
+    Write-Host "Applying cuda.h alignment fix..."
+    $cudaHPatch = Join-Path $PSScriptRoot "cuda_h_alignment_fix.patch"
+    # Locate patch.exe that ships with Git for Windows. It lives in the usr\bin
+    # sub-directory relative to the Git installation root. Derive that root from
+    # the path of git.exe so that non-standard Git installations are handled.
+    $gitExe = (Get-Command git -ErrorAction SilentlyContinue).Source
+    if (-not $gitExe) {
+        Write-Error "git.exe not found on PATH; cannot locate patch.exe"
+        exit 1
+    }
+    # git.exe is typically at <GitRoot>\cmd\git.exe or <GitRoot>\bin\git.exe
+    $gitRoot = Split-Path (Split-Path $gitExe -Parent) -Parent
+    $patchExe = Join-Path $gitRoot "usr\bin\patch.exe"
+    if (-not (Test-Path $patchExe)) {
+        Write-Error "patch.exe not found at expected path: $patchExe"
+        exit 1
+    }
+    & $patchExe --fuzz 2 -p1 --directory $env:CUDA_HOME -i $cudaHPatch
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Failed to apply cuda.h alignment fix patch"
+        exit 1
+    }
+    Write-Host "cuda.h alignment fix applied successfully"
+}
+
 Set-Location hopper
 
 $gitHash = (git rev-parse --short=6 HEAD).Trim()
