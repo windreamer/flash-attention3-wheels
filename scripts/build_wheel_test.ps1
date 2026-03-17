@@ -97,10 +97,25 @@ if ($isCuda13) {
     # --- Patch 2: CUDA toolkit cuda.h (CUtensorMap alignment) ---
     # Lowers CUtensorMap_st alignment from 128 to 64 bytes so that the type can
     # be used as a function parameter without triggering C2719.
-    # Applied with the patch utility bundled with Git for Windows.
+    # Applied with patch.exe bundled with Git for Windows (in Git\usr\bin\).
     Write-Host "Applying cuda.h alignment fix..."
     $cudaHPatch = Join-Path $PSScriptRoot "cuda_h_alignment_fix.patch"
-    & patch --fuzz 2 -p1 --directory $env:CUDA_HOME -i $cudaHPatch
+    # Locate patch.exe that ships with Git for Windows. It lives in the usr\bin
+    # sub-directory relative to the Git installation root. Derive that root from
+    # the path of git.exe so that non-standard Git installations are handled.
+    $gitExe = (Get-Command git -ErrorAction SilentlyContinue).Source
+    if (-not $gitExe) {
+        Write-Error "git.exe not found on PATH; cannot locate patch.exe"
+        exit 1
+    }
+    # git.exe is typically at <GitRoot>\cmd\git.exe or <GitRoot>\bin\git.exe
+    $gitRoot = Split-Path (Split-Path $gitExe -Parent) -Parent
+    $patchExe = Join-Path $gitRoot "usr\bin\patch.exe"
+    if (-not (Test-Path $patchExe)) {
+        Write-Error "patch.exe not found at expected path: $patchExe"
+        exit 1
+    }
+    & $patchExe --fuzz 2 -p1 --directory $env:CUDA_HOME -i $cudaHPatch
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Failed to apply cuda.h alignment fix patch"
         exit 1
