@@ -40,13 +40,13 @@ def get_target_versions(target: str) -> tuple[list[str], list[str]]:
     target = (target or "linux").lower()
 
     if target == "windows":
-        cuda_versions = ["12.8", "12.9"]
-        torch_versions = ["2.8.0", "2.9.1"]
+        cuda_versions = ["12.8", "13.0"]
+        torch_versions = ["2.8.0", "2.10.0"]
     elif target == "arm":
-        cuda_versions = ["12.8", "12.9", "13.0"]
+        cuda_versions = ["12.8", "13.0"]
         torch_versions = ["2.8.0", "2.10.0"]
     else:
-        cuda_versions = ["12.8", "12.9", "13.0"]
+        cuda_versions = ["12.8", "13.0"]
         torch_versions = ["2.8.0", "2.10.0"]
 
     return cuda_versions, torch_versions
