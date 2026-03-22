@@ -11,6 +11,15 @@
 > **Upstream PR:** Windows compatibility fixes submitted to [Dao-AILab/flash-attention#2047](http://github.com/Dao-AILab/flash-attention/pull/2047)
 
 
+## Recent Updates
+
+- **2026-03-19**: 🆕 CUDA 13.0 support added for Windows and Linux
+- **2026-03-16**: ⚙️ GitHub Actions updated to Node.js 24 compatible versions
+- **2026-03-04**: 🐛 Fixed corrupt patch error in Windows builds
+- **2026-03-04**: 🔧 Build scripts now clone directly from upstream [flash-attention](https://github.com/Dao-AILab/flash-attention)
+- **Earlier**: 🪟 Windows and Arm64 (GH200) wheel support added; upstream PR [#2047](https://github.com/Dao-AILab/flash-attention/pull/2047) submitted
+
+
 ## Quick start
 
 Pick the line that matches your setup (change `cu128` / `torch280` if needed):
