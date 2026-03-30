@@ -56,7 +56,7 @@ jobs:
             --token $GITHUB_TOKEN \
             --output docs
       - name: Setup Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
       - name: Delete old github-pages artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -88,5 +88,5 @@ jobs:
           done
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 
