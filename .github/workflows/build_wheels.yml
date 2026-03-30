@@ -72,10 +72,10 @@ jobs:
       status: ${{ job.status }}
     steps:
       - uses: actions/checkout@v6
-      - uses: google-github-actions/auth@v2
+      - uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
-      - uses: google-github-actions/setup-gcloud@v2
+      - uses: google-github-actions/setup-gcloud@v3
 
       - name: Prepare SSH key
         run: |
@@ -83,12 +83,7 @@ jobs:
           chmod 600 gha-runner
 
       - name: Create Spot VM and build wheel
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 600
-          max_attempts: 2
-          retry_wait_seconds: 30
-          command: |
+        run: |
             set -euo pipefail
             CUDA="${{ matrix.cuda }}"
             TORCH="${{ matrix.torch }}"
@@ -154,7 +149,7 @@ jobs:
                 -i gha-runner -r ubuntu@$IP:/tmp/wheels/*.whl /tmp/wheels/
 
       - name: Upload wheel artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: wheel-cu${{ matrix.cuda }}-torch${{ matrix.torch }}
           path: /tmp/wheels/*.whl
@@ -189,10 +184,10 @@ jobs:
       status: ${{ job.status }}
     steps:
       - uses: actions/checkout@v6
-      - uses: google-github-actions/auth@v2
+      - uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
-      - uses: google-github-actions/setup-gcloud@v2
+      - uses: google-github-actions/setup-gcloud@v3
 
       - name: Prepare SSH key
         run: |
@@ -200,12 +195,7 @@ jobs:
           chmod 600 gha-runner
 
       - name: Create Spot VM and build wheel
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 1080
-          max_attempts: 2
-          retry_wait_seconds: 30
-          command: |
+        run: |
             set -euo pipefail
             CUDA="${{ matrix.cuda }}"
             TORCH="${{ matrix.torch }}"
@@ -271,7 +261,7 @@ jobs:
                 -i gha-runner -r ubuntu@$IP:/tmp/wheels/*.whl /tmp/wheels/
 
       - name: Upload wheel artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: wheel-arm-cu${{ matrix.cuda }}-torch${{ matrix.torch }}
           path: /tmp/wheels/*.whl
@@ -331,7 +321,7 @@ jobs:
             -MaxJobs 7
 
       - name: Upload wheel artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: wheel-win-cu${{ matrix.cuda }}-torch${{ matrix.torch }}
           path: C:\tmp\wheels\*.whl
@@ -354,10 +344,10 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - uses: google-github-actions/auth@v2
+      - uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
-      - uses: google-github-actions/setup-gcloud@v2
+      - uses: google-github-actions/setup-gcloud@v3
       - name: Delete all Spot VMs created by this workflow
         run: |
           gcloud compute instances list \
