@@ -61,6 +61,7 @@ jobs:
   build-wheels:
     needs: prepare-matrix
     runs-on: ubuntu-latest
+    timeout-minutes: 600
     env:
       MACHINE_TYPE: n2-custom-16-65536
       IMAGE: ubuntu-2204-jammy-v20230615
