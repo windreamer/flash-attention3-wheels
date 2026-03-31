@@ -40,14 +40,20 @@ def get_target_versions(target: str) -> tuple[list[str], list[str]]:
     target = (target or "linux").lower()
 
     if target == "windows":
-        cuda_versions = ["12.8", "13.0"]
-        torch_versions = ["2.8.0", "2.11.0"]
+        default_cuda = ["12.8", "13.0"]
+        default_torch = ["2.8.0", "2.11.0"]
     elif target == "arm":
-        cuda_versions = ["12.8", "13.0"]
-        torch_versions = ["2.8.0", "2.11.0"]
+        default_cuda = ["12.8", "13.0"]
+        default_torch = ["2.8.0", "2.11.0"]
     else:
-        cuda_versions = ["12.8", "13.0"]
-        torch_versions = ["2.8.0", "2.11.0"]
+        default_cuda = ["12.8", "13.0"]
+        default_torch = ["2.8.0", "2.11.0"]
+
+    cuda_env = os.getenv("CUDA_VERSIONS", "").strip()
+    torch_env = os.getenv("TORCH_VERSIONS", "").strip()
+
+    cuda_versions = [v.strip() for v in cuda_env.split(",") if v.strip()] if cuda_env else default_cuda
+    torch_versions = [v.strip() for v in torch_env.split(",") if v.strip()] if torch_env else default_torch
 
     return cuda_versions, torch_versions
 
