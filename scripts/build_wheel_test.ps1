@@ -170,6 +170,15 @@ if (-not $originalWheel) {
 }
 Write-Host "Original wheel built: $originalWheel"
 
+Write-Host "Verifying wheel exports..."
+$verifyScript = Join-Path $PSScriptRoot "verify_wheel_exports.py"
+python $verifyScript $originalWheel
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Wheel export verification failed! The .pyd is missing required PyInit symbols."
+    exit 1
+}
+Write-Host "Wheel export verification passed."
+
 $buildDate = (Get-Date -Format "yyyyMMdd")
 Write-Host "Build date: $buildDate"
 
