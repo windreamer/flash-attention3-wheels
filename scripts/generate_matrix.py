@@ -35,20 +35,16 @@ def get_latest_cuda_patches_for_ubuntu2204() -> dict[str, str]:
     return {k: f"{k}.{p}" for k, p in latest_patch.items()}
 
 
-def get_target_versions(target: str) -> tuple[list[str], list[str]]:
-    """Return (cuda_versions, torch_versions) for a given target platform."""
-    target = (target or "linux").lower()
+DEFAULT_CUDA_VERSIONS = ["12.8", "13.0"]
+DEFAULT_TORCH_VERSIONS = ["2.8.0", "2.11.0"]
 
-    if target == "windows":
-        cuda_versions = ["12.8", "13.0"]
-        torch_versions = ["2.8.0", "2.11.0"]
-    elif target == "arm":
-        cuda_versions = ["12.8", "13.0"]
-        torch_versions = ["2.8.0", "2.11.0"]
-    else:
-        cuda_versions = ["12.8", "13.0"]
-        torch_versions = ["2.8.0", "2.11.0"]
 
+def get_target_versions() -> tuple[list[str], list[str]]:
+    """Return (cuda_versions, torch_versions), falling back to defaults when env vars are not set."""
+    cuda_env = os.getenv("CUDA_VERSIONS", "").strip()
+    torch_env = os.getenv("TORCH_VERSIONS", "").strip()
+    cuda_versions = [v.strip() for v in cuda_env.split(",") if v.strip()] if cuda_env else DEFAULT_CUDA_VERSIONS
+    torch_versions = [v.strip() for v in torch_env.split(",") if v.strip()] if torch_env else DEFAULT_TORCH_VERSIONS
     return cuda_versions, torch_versions
 
 
@@ -133,7 +129,7 @@ def main() -> None:
     cuda_full_map = get_latest_cuda_patches_for_ubuntu2204()
 
     target = os.getenv("MATRIX_TARGET", "linux").lower()
-    cuda_versions, torch_versions = get_target_versions(target)
+    cuda_versions, torch_versions = get_target_versions()
 
     pytorch_table = build_pytorch_cuda_table()
     target_filter = pytorch_table.get(target, {})

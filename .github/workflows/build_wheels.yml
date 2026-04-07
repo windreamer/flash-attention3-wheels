@@ -4,6 +4,15 @@ on:
   schedule:
     - cron: '0 22 * * 0'
   workflow_dispatch:
+    inputs:
+      cuda_versions:
+        description: 'Comma-separated CUDA versions to build (e.g. "12.8,13.0"). Leave empty to use defaults.'
+        required: false
+        default: ''
+      torch_versions:
+        description: 'Comma-separated PyTorch versions to build (e.g. "2.8.0,2.11.0"). Leave empty to use defaults.'
+        required: false
+        default: ''
 
 env:
   PROJECT_ID: coherent-vim-471701-r7
@@ -46,16 +55,22 @@ jobs:
         id: linux
         env:
           MATRIX_TARGET: linux
+          CUDA_VERSIONS: ${{ inputs.cuda_versions }}
+          TORCH_VERSIONS: ${{ inputs.torch_versions }}
         run: python scripts/generate_matrix.py
       - name: Generate Windows matrix
         id: win
         env:
           MATRIX_TARGET: windows
+          CUDA_VERSIONS: ${{ inputs.cuda_versions }}
+          TORCH_VERSIONS: ${{ inputs.torch_versions }}
         run: python scripts/generate_matrix.py
       - name: Generate Arm matrix
         id: arm
         env:
           MATRIX_TARGET: arm
+          CUDA_VERSIONS: ${{ inputs.cuda_versions }}
+          TORCH_VERSIONS: ${{ inputs.torch_versions }}
         run: python scripts/generate_matrix.py
 
   build-wheels:
