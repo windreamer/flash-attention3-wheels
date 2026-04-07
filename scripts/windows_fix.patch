@@ -36,7 +36,7 @@ index 87f6f45..7d9dbbb 100755
      if torch_version >= target_version:
          flash_api_source = "flash_api_stable.cpp"
          stable_args = ["-DTORCH_TARGET_VERSION=0x0209000000000000"]  # Targets minimum runtime version torch 2.9.0
-@@ -703,6 +704,80 @@ class CachedWheelsCommand(_bdist_wheel):
+@@ -703,6 +704,83 @@ class CachedWheelsCommand(_bdist_wheel):
              # If the wheel could not be downloaded, build from source
              super().run()
  
@@ -70,6 +70,9 @@ index 87f6f45..7d9dbbb 100755
 +            if not self.compiler.initialized:
 +                self.compiler.initialize()
 +
++            expected_sym = f'PyInit_{os.path.splitext(os.path.basename(output_filename))[0]}'
++            assert export_symbols and expected_sym in export_symbols, \
++                f"Expected {expected_sym!r} in export_symbols for {output_filename!r}, got {export_symbols!r}"
 +            library_target = os.path.abspath(output_filename if output_dir is None else os.path.join(output_dir, output_filename))
 +            output_dir = os.path.dirname(library_target)
 +            objs = [f'{o.replace(":", "$:")}' for o in objects]
