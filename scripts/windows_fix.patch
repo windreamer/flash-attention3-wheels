@@ -71,8 +71,11 @@ index 87f6f45..7d9dbbb 100755
 +                self.compiler.initialize()
 +
 +            expected_sym = f'PyInit_{os.path.splitext(os.path.basename(output_filename))[0]}'
-+            assert export_symbols and expected_sym in export_symbols, \
-+                f"Expected {expected_sym!r} in export_symbols for {output_filename!r}, got {export_symbols!r}"
++            if not export_symbols or expected_sym not in export_symbols:
++                raise RuntimeError(
++                    f"Expected {expected_sym!r} in export_symbols for "
++                    f"{output_filename!r}, got {export_symbols!r}"
++                )
 +            library_target = os.path.abspath(output_filename if output_dir is None else os.path.join(output_dir, output_filename))
 +            output_dir = os.path.dirname(library_target)
 +            objs = [f'{o.replace(":", "$:")}' for o in objects]
