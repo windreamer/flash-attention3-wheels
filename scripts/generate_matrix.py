@@ -1,4 +1,3 @@
-import argparse
 import json
 import os
 import re
@@ -40,15 +39,13 @@ DEFAULT_CUDA_VERSIONS = ["12.8", "13.0"]
 DEFAULT_TORCH_VERSIONS = ["2.8.0", "2.11.0"]
 
 
-def get_target_versions(
-    cuda_versions: list[str],
-    torch_versions: list[str],
-) -> tuple[list[str], list[str]]:
-    """Return (cuda_versions, torch_versions), falling back to defaults when not provided."""
-    return (
-        cuda_versions if cuda_versions else DEFAULT_CUDA_VERSIONS,
-        torch_versions if torch_versions else DEFAULT_TORCH_VERSIONS,
-    )
+def get_target_versions() -> tuple[list[str], list[str]]:
+    """Return (cuda_versions, torch_versions), falling back to defaults when env vars are not set."""
+    cuda_env = os.getenv("CUDA_VERSIONS", "").strip()
+    torch_env = os.getenv("TORCH_VERSIONS", "").strip()
+    cuda_versions = [v.strip() for v in cuda_env.split(",") if v.strip()] if cuda_env else DEFAULT_CUDA_VERSIONS
+    torch_versions = [v.strip() for v in torch_env.split(",") if v.strip()] if torch_env else DEFAULT_TORCH_VERSIONS
+    return cuda_versions, torch_versions
 
 
 def fetch_html(url: str) -> str:
@@ -129,26 +126,10 @@ def write_github_output(matrix_json: str) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Generate build matrix for flash-attention wheels.")
-    parser.add_argument(
-        "--cuda-versions",
-        default="",
-        help="Comma-separated CUDA versions to build (e.g. '12.8,13.0'). Defaults to: " + ",".join(DEFAULT_CUDA_VERSIONS),
-    )
-    parser.add_argument(
-        "--torch-versions",
-        default="",
-        help="Comma-separated PyTorch versions to build (e.g. '2.8.0,2.11.0'). Defaults to: " + ",".join(DEFAULT_TORCH_VERSIONS),
-    )
-    args = parser.parse_args()
-
-    cuda_arg = [v.strip() for v in args.cuda_versions.split(",") if v.strip()]
-    torch_arg = [v.strip() for v in args.torch_versions.split(",") if v.strip()]
-
     cuda_full_map = get_latest_cuda_patches_for_ubuntu2204()
 
     target = os.getenv("MATRIX_TARGET", "linux").lower()
-    cuda_versions, torch_versions = get_target_versions(cuda_arg, torch_arg)
+    cuda_versions, torch_versions = get_target_versions()
 
     pytorch_table = build_pytorch_cuda_table()
     target_filter = pytorch_table.get(target, {})

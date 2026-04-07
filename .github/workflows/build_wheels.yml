@@ -55,17 +55,23 @@ jobs:
         id: linux
         env:
           MATRIX_TARGET: linux
-        run: python scripts/generate_matrix.py --cuda-versions "${{ inputs.cuda_versions }}" --torch-versions "${{ inputs.torch_versions }}"
+          CUDA_VERSIONS: ${{ inputs.cuda_versions }}
+          TORCH_VERSIONS: ${{ inputs.torch_versions }}
+        run: python scripts/generate_matrix.py
       - name: Generate Windows matrix
         id: win
         env:
           MATRIX_TARGET: windows
-        run: python scripts/generate_matrix.py --cuda-versions "${{ inputs.cuda_versions }}" --torch-versions "${{ inputs.torch_versions }}"
+          CUDA_VERSIONS: ${{ inputs.cuda_versions }}
+          TORCH_VERSIONS: ${{ inputs.torch_versions }}
+        run: python scripts/generate_matrix.py
       - name: Generate Arm matrix
         id: arm
         env:
           MATRIX_TARGET: arm
-        run: python scripts/generate_matrix.py --cuda-versions "${{ inputs.cuda_versions }}" --torch-versions "${{ inputs.torch_versions }}"
+          CUDA_VERSIONS: ${{ inputs.cuda_versions }}
+          TORCH_VERSIONS: ${{ inputs.torch_versions }}
+        run: python scripts/generate_matrix.py
 
   build-wheels:
     needs: prepare-matrix
