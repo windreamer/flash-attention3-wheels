@@ -1,5 +1,5 @@
 diff --git a/hopper/setup.py b/hopper/setup.py
-index 87f6f45..7d9dbbb 100755
+index 87f6f45..ecc52e0 100755
 --- a/hopper/setup.py
 +++ b/hopper/setup.py
 @@ -22,7 +22,8 @@ import urllib.error
@@ -36,11 +36,17 @@ index 87f6f45..7d9dbbb 100755
      if torch_version >= target_version:
          flash_api_source = "flash_api_stable.cpp"
          stable_args = ["-DTORCH_TARGET_VERSION=0x0209000000000000"]  # Targets minimum runtime version torch 2.9.0
-@@ -703,6 +704,83 @@ class CachedWheelsCommand(_bdist_wheel):
+@@ -703,6 +704,89 @@ class CachedWheelsCommand(_bdist_wheel):
              # If the wheel could not be downloaded, build from source
              super().run()
  
 +class BuildExtension(_BuildExtension):
++    def get_export_symbols(self, ext):
++        initfunc_name = "PyInit_" + ext.name.split(".")[-1]
++        if initfunc_name not in ext.export_symbols:
++            ext.export_symbols.append(initfunc_name)
++        return ext.export_symbols
++
 +    def build_extensions(self) -> None:
 +        original_link_shared_object = self.compiler.link_shared_object
 +
