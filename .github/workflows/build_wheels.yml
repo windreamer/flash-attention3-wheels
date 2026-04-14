@@ -191,6 +191,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 1080
     env:
+      ZONE: us-central1-f
       MACHINE_TYPE: t2a-standard-16
       IMAGE: ubuntu-2204-jammy-arm64-v20240927
     strategy:
