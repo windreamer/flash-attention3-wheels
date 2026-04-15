@@ -157,7 +157,7 @@ jobs:
                   sed -i "s|http://archive.ubuntu.com|http://us-central1.gce.archive.ubuntu.com|g" /etc/apt/sources.list
                   cd /workspace
                   apt-get update && apt-get install -y python-is-python3 git ninja-build python3-pip python3-dev
-                  bash scripts/build_wheel.sh ${{ matrix.cuda }} ${{ matrix.torch }} 10 | grep -v "ptxas info" | grep -v "bytes stack frame,"
+                  bash scripts/build_wheel.sh ${{ matrix.cuda }} ${{ matrix.torch }} 8 | grep -v "ptxas info" | grep -v "bytes stack frame,"
                 '
             EOF
             mkdir -p /tmp/wheels
@@ -271,7 +271,7 @@ jobs:
                   sed -i "s|http://archive.ubuntu.com|http://us-central1.gce.archive.ubuntu.com|g" /etc/apt/sources.list
                   cd /workspace
                   apt-get update && apt-get install -y python-is-python3 git ninja-build python3-pip python3-dev
-                  bash scripts/build_wheel.sh ${{ matrix.cuda }} ${{ matrix.torch }} 4 | grep -v "ptxas info" | grep -v "bytes stack frame,"
+                  bash scripts/build_wheel.sh ${{ matrix.cuda }} ${{ matrix.torch }} 3 | grep -v "ptxas info" | grep -v "bytes stack frame,"
                 '
             EOF
             mkdir -p /tmp/wheels
@@ -336,7 +336,7 @@ jobs:
           scripts/build_wheel.ps1 `
             -CudaVersion "${{ matrix.cuda }}" `
             -TorchVersion "${{ matrix.torch }}" `
-            -MaxJobs 7
+            -MaxJobs 6
 
       - name: Upload wheel artifact
         uses: actions/upload-artifact@v7
