@@ -334,7 +334,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           repository: Jimver/cuda-toolkit
-          ref: ${{ matrix.jimver_cuda_toolkit_version }}
+          ref: ${{ inputs.jimver_cuda_toolkit_version || 'v0.2.35' }}
           path: .jimver-cuda-toolkit
 
       - name: Install CUDA ${{ matrix.cuda }}

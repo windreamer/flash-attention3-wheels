@@ -172,10 +172,9 @@ def main() -> None:
             torch = torch.strip()
             if cuda not in target_filter[torch]:
                 continue
-            entry: dict = {"cuda": cuda, "cuda_full": cuda_full, "torch": torch}
-            if target == "windows":
-                entry["jimver_cuda_toolkit_version"] = _JIMVER_CUDA_TOOLKIT_VERSION
-            matrix["include"].append(entry)
+            matrix["include"].append(
+                {"cuda": cuda, "cuda_full": cuda_full, "torch": torch}
+            )
 
     matrix_json = json.dumps(matrix, separators=(",", ":"))
     write_github_output(matrix_json)
