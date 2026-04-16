@@ -7,8 +7,8 @@ import requests
 
 DOCKER_TAGS_API = "https://hub.docker.com/v2/repositories/nvidia/cuda/tags/"
 PYTORCH_WHL_INDEX = "https://download.pytorch.org/whl/torch/"
-_CUDA_TOOLKIT_VERSION = os.getenv("CUDA_TOOLKIT_VERSION", "v0.2.35")
-WINDOWS_LINKS_URL = f"https://raw.githubusercontent.com/Jimver/cuda-toolkit/refs/tags/{_CUDA_TOOLKIT_VERSION}/src/links/windows-links.ts"
+_JIMVER_CUDA_TOOLKIT_VERSION = os.getenv("JIMVER_CUDA_TOOLKIT_VERSION", "v0.2.35")
+WINDOWS_LINKS_URL = f"https://raw.githubusercontent.com/Jimver/cuda-toolkit/refs/tags/{_JIMVER_CUDA_TOOLKIT_VERSION}/src/links/windows-links.ts"
 
 
 def get_latest_cuda_patches_for_ubuntu2204() -> dict[str, str]:
@@ -172,9 +172,10 @@ def main() -> None:
             torch = torch.strip()
             if cuda not in target_filter[torch]:
                 continue
-            matrix["include"].append(
-                {"cuda": cuda, "cuda_full": cuda_full, "torch": torch}
-            )
+            entry: dict = {"cuda": cuda, "cuda_full": cuda_full, "torch": torch}
+            if target == "windows":
+                entry["jimver_cuda_toolkit_version"] = _JIMVER_CUDA_TOOLKIT_VERSION
+            matrix["include"].append(entry)
 
     matrix_json = json.dumps(matrix, separators=(",", ":"))
     write_github_output(matrix_json)
