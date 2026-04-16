@@ -7,6 +7,7 @@ import requests
 
 DOCKER_TAGS_API = "https://hub.docker.com/v2/repositories/nvidia/cuda/tags/"
 PYTORCH_WHL_INDEX = "https://download.pytorch.org/whl/torch/"
+WINDOWS_LINKS_URL = "https://raw.githubusercontent.com/Jimver/cuda-toolkit/refs/tags/v0.2.35/src/links/windows-links.ts"
 
 
 def get_latest_cuda_patches_for_ubuntu2204() -> dict[str, str]:
@@ -31,6 +32,27 @@ def get_latest_cuda_patches_for_ubuntu2204() -> dict[str, str]:
             key = f"{major}.{minor}"
             latest_patch[key] = max(latest_patch.get(key, -1), int(patch))
         url = resp.get("next")
+
+    return {k: f"{k}.{p}" for k, p in latest_patch.items()}
+
+
+def get_latest_cuda_patches_for_windows() -> dict[str, str]:
+    """
+    Return mapping like {"12.8": "12.8.1", "13.0": "13.0.2"} by parsing
+    available CUDA versions from the Jimver/cuda-toolkit windows-links.ts file.
+    """
+    content = fetch_html(WINDOWS_LINKS_URL)
+    # Match all version strings in the TypeScript map keys, e.g. '13.0.2'
+    versions = re.findall(r"'(\d+\.\d+\.\d+)'", content)
+
+    latest_patch: dict[str, int] = {}  # key: "major.minor" -> max patch int
+    for ver in versions:
+        parts = ver.split(".")
+        if len(parts) != 3:
+            continue
+        major, minor, patch = parts
+        key = f"{major}.{minor}"
+        latest_patch[key] = max(latest_patch.get(key, -1), int(patch))
 
     return {k: f"{k}.{p}" for k, p in latest_patch.items()}
 
@@ -126,9 +148,13 @@ def write_github_output(matrix_json: str) -> None:
 
 
 def main() -> None:
-    cuda_full_map = get_latest_cuda_patches_for_ubuntu2204()
-
     target = os.getenv("MATRIX_TARGET", "linux").lower()
+
+    if target == "windows":
+        cuda_full_map = get_latest_cuda_patches_for_windows()
+    else:
+        cuda_full_map = get_latest_cuda_patches_for_ubuntu2204()
+
     cuda_versions, torch_versions = get_target_versions()
 
     pytorch_table = build_pytorch_cuda_table()
