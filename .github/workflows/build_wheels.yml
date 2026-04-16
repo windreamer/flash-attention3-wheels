@@ -13,6 +13,10 @@ on:
         description: 'Comma-separated PyTorch versions to build (e.g. "2.8.0,2.11.0"). Leave empty to use defaults.'
         required: false
         default: ''
+      jimver_cuda_toolkit_version:
+        description: 'Jimver/cuda-toolkit action version tag to use for Windows builds (e.g. "v0.2.35"). Leave empty to use default.'
+        required: false
+        default: ''
 
 env:
   PROJECT_ID: coherent-vim-471701-r7
@@ -64,6 +68,7 @@ jobs:
           MATRIX_TARGET: windows
           CUDA_VERSIONS: ${{ inputs.cuda_versions }}
           TORCH_VERSIONS: ${{ inputs.torch_versions }}
+          JIMVER_CUDA_TOOLKIT_VERSION: ${{ inputs.jimver_cuda_toolkit_version }}
         run: python scripts/generate_matrix.py
       - name: Generate Arm matrix
         id: arm
@@ -325,8 +330,15 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Checkout Jimver/cuda-toolkit action
+        uses: actions/checkout@v6
+        with:
+          repository: Jimver/cuda-toolkit
+          ref: ${{ inputs.jimver_cuda_toolkit_version || 'v0.2.35' }}
+          path: .jimver-cuda-toolkit
+
       - name: Install CUDA ${{ matrix.cuda }}
-        uses: Jimver/cuda-toolkit@v0.2.35
+        uses: ./.jimver-cuda-toolkit
         with:
           cuda: ${{ matrix.cuda_full }}
 
