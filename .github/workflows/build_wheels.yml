@@ -16,7 +16,7 @@ on:
       jimver_cuda_toolkit_version:
         description: 'Jimver/cuda-toolkit action version tag to use for Windows builds (e.g. "v0.2.35"). Leave empty to use default.'
         required: false
-        default: ''
+        default: 'v0.2.35'
 
 env:
   PROJECT_ID: coherent-vim-471701-r7
@@ -68,7 +68,7 @@ jobs:
           MATRIX_TARGET: windows
           CUDA_VERSIONS: ${{ inputs.cuda_versions }}
           TORCH_VERSIONS: ${{ inputs.torch_versions }}
-          JIMVER_CUDA_TOOLKIT_VERSION: ${{ inputs.jimver_cuda_toolkit_version }}
+          JIMVER_CUDA_TOOLKIT_VERSION: ${{ inputs.jimver_cuda_toolkit_version || 'v0.2.35'}}
         run: python scripts/generate_matrix.py
       - name: Generate Arm matrix
         id: arm
