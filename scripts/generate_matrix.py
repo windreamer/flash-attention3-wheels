@@ -7,7 +7,8 @@ import requests
 
 DOCKER_TAGS_API = "https://hub.docker.com/v2/repositories/nvidia/cuda/tags/"
 PYTORCH_WHL_INDEX = "https://download.pytorch.org/whl/torch/"
-WINDOWS_LINKS_URL = "https://raw.githubusercontent.com/Jimver/cuda-toolkit/refs/tags/v0.2.35/src/links/windows-links.ts"
+_CUDA_TOOLKIT_VERSION = os.getenv("CUDA_TOOLKIT_VERSION", "v0.2.35")
+WINDOWS_LINKS_URL = f"https://raw.githubusercontent.com/Jimver/cuda-toolkit/refs/tags/{_CUDA_TOOLKIT_VERSION}/src/links/windows-links.ts"
 
 
 def get_latest_cuda_patches_for_ubuntu2204() -> dict[str, str]:
