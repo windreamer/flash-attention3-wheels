@@ -128,8 +128,11 @@ def build_pytorch_cuda_table() -> dict[str, dict[str, set[str]]]:
 
         torch_ver, cuda_tag = parsed
 
-        torch_ver_tuple = tuple(map(int, torch_ver.split(".")))
-        cuda_ver_tuple = (int(cuda_tag[2:4]), int(cuda_tag[4:]))
+        try:
+            torch_ver_tuple = tuple(map(int, torch_ver.split(".")))
+            cuda_ver_tuple = (int(cuda_tag[2:4]), int(cuda_tag[4:]))
+        except ValueError:
+            continue
 
         if torch_ver_tuple < (2, 8, 0) or cuda_ver_tuple < (12, 6):
             continue
