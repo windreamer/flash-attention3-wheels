@@ -59,7 +59,7 @@ def get_latest_cuda_patches_for_windows() -> dict[str, str]:
 
 
 DEFAULT_CUDA_VERSIONS = ["12.8", "13.0", "13.2"]
-DEFAULT_TORCH_VERSIONS = ["2.8.0", "2.12.1"]
+DEFAULT_TORCH_VERSIONS = ["2.8.0", "2.13.0"]
 
 
 def get_target_versions() -> tuple[list[str], list[str]]:
