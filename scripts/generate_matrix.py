@@ -59,15 +59,15 @@ def get_latest_cuda_patches_for_windows() -> dict[str, str]:
 
 
 DEFAULT_CUDA_VERSIONS = ["12.8", "13.0", "13.2"]
-DEFAULT_TORCH_VERSIONS = ["2.8.0", "2.13.0"]
+MIN_TORCH_VERSION = "2.8.0"
 
 
-def get_target_versions() -> tuple[list[str], list[str]]:
+def get_target_versions() -> tuple[list[str], list[str] | None]:
     """Return (cuda_versions, torch_versions), falling back to defaults when env vars are not set."""
     cuda_env = os.getenv("CUDA_VERSIONS", "").strip()
     torch_env = os.getenv("TORCH_VERSIONS", "").strip()
     cuda_versions = [v.strip() for v in cuda_env.split(",") if v.strip()] if cuda_env else DEFAULT_CUDA_VERSIONS
-    torch_versions = [v.strip() for v in torch_env.split(",") if v.strip()] if torch_env else DEFAULT_TORCH_VERSIONS
+    torch_versions = [v.strip() for v in torch_env.split(",") if v.strip()] if torch_env else None
     return cuda_versions, torch_versions
 
 
@@ -144,6 +144,13 @@ def build_pytorch_cuda_table() -> dict[str, dict[str, set[str]]]:
     return table
 
 
+def get_latest_stable_torch_version(pytorch_table: dict[str, dict[str, set[str]]], target: str) -> str | None:
+    platform_table = pytorch_table.get(target, {})
+    if not platform_table:
+        return None
+    return max(platform_table.keys(), key=lambda v: tuple(map(int, v.split("."))))
+
+
 def write_github_output(matrix_json: str) -> None:
     if "GITHUB_OUTPUT" not in os.environ:
         return
@@ -163,6 +170,12 @@ def main() -> None:
 
     pytorch_table = build_pytorch_cuda_table()
     target_filter = pytorch_table.get(target, {})
+
+    if torch_versions is None:
+        latest_stable = get_latest_stable_torch_version(pytorch_table, target)
+        torch_versions = [MIN_TORCH_VERSION]
+        if latest_stable and latest_stable != MIN_TORCH_VERSION:
+            torch_versions.append(latest_stable)
 
     matrix = {"include": []}
 
