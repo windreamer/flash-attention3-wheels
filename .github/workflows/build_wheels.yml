@@ -37,12 +37,18 @@ jobs:
             exit 0
           fi
 
-          week=$(date -u +%V)
-          echo "Week No. ${week}..."
-          if [ $((10#$week % 2)) -eq 0 ]; then
-            echo "run=false" >> "$GITHUB_OUTPUT"
-          else
+          # Biweekly gate on epoch-week parity (week = days-since-epoch / 7).
+          # Epoch weeks roll over Thursday 00:00 UTC, ~2 days away from the
+          # Sun 22:00 UTC schedule; ISO weeks roll over Monday 00:00, so a
+          # delayed dispatch crossing midnight flips the ISO week and can
+          # invert the parity (this silently skipped the 2026-08-30 run).
+          # Phase: even epoch week => run (matches the 2026-08-03/17/30 runs).
+          week=$(( $(date -u +%s) / 604800 ))
+          echo "Epoch week No. ${week}..."
+          if [ $((week % 2)) -eq 0 ]; then
             echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
           fi
 
   prepare-matrix:
