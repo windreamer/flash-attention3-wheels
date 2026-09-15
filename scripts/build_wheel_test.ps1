@@ -130,17 +130,29 @@ $gitHash = (git rev-parse --short=6 HEAD).Trim()
 Write-Host "Current git hash: $gitHash"
 
 function Find-VcVarsAll {
-    $possiblePaths = @(
-        "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvarsall.bat",
-        "C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build\vcvarsall.bat",
-        "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat"
-    )
-
-    foreach ($path in $possiblePaths) {
-        if (Test-Path $path) {
-            return $path
+    # 1) vswhere: authoritative locator shipped with every Visual Studio install.
+    #    Works for any VS year/edition and requires the C++ toolset component.
+    $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+    if (Test-Path $vswhere) {
+        $installPath = & $vswhere -latest -products * `
+            -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+            -property installationPath 2>$null | Select-Object -First 1
+        if ($installPath) {
+            $candidate = Join-Path $installPath.Trim() "VC\Auxiliary\Build\vcvarsall.bat"
+            if (Test-Path $candidate) {
+                return $candidate
+            }
         }
     }
+
+    # 2) Fallback: any VS installation layout (year\edition, incl. BuildTools).
+    $discovered = Get-ChildItem `
+        "C:\Program Files\Microsoft Visual Studio\*\*\VC\Auxiliary\Build\vcvarsall.bat" `
+        -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+    if ($discovered) {
+        return $discovered
+    }
+
     return $null
 }
 
@@ -150,8 +162,8 @@ $vcvarsallPath = if ($VsPath) {
     Find-VcVarsAll
 }
 
-if (-not (Test-Path $vcvarsallPath)) {
-    Write-Error "vcvarsall.bat not found at: $vcvarsallPath"
+if (-not $vcvarsallPath -or -not (Test-Path $vcvarsallPath)) {
+    Write-Error "vcvarsall.bat not found (vswhere lookup and glob over C:\Program Files\Microsoft Visual Studio\*\*\ found nothing)."
     Write-Error "Please ensure Visual Studio 2019 or later with C++ build tools is installed."
     Write-Error "You can specify the path using -VsPath parameter."
     exit 1
