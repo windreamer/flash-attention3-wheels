@@ -3,7 +3,7 @@ runners:
     cloud: "azure"
     region: "westus2"
     instance_type: "Standard_E8as_v7"
-    machine_image: microsoftvisualstudio:visualstudiowsplustools:vs-latest-comm-ws2025-datacenter-azure-gen2:latest
+    machine_image: microsoftvisualstudio:visualstudiowsplustools:vs-2022-pro-ws2025-datacenter-azure-gen2:latest
     labels:
       - "cirun-azure-windows-runner"
 
