@@ -20,8 +20,7 @@ WHEEL_RE = re.compile(
     r"torch(?P<torch>\d{3,4})"  # 280/2100
     r"cxx11abi(?P<abi>true|false)"  # true
     r"[.+][a-f0-9]+"  # dfb664
-    r"-cp(?P<py>\d{2})-.+-(?P<platform>[a-z0-9_]+)\.whl",  # cp39-abi3-linux_x86_64.whl
-    re.I,
+    r"-cp(?P<py>\d{2,3})-.+-(?P<platform>[a-z0-9_]+)\.whl",  # cp39..cp310
 )
 
 CACHE_FILE = "download_stats.json"
@@ -49,11 +48,15 @@ class WheelIndexGenerator:
         )
 
     def get_releases(self) -> List[Dict]:
-        """获取所有release"""
-        url = f"{self.base_url}/releases"
-        response = requests.get(url, headers=self.headers)
-        response.raise_for_status()
-        return response.json()
+        """获取所有release（分页遍历，默认接口单页仅返回30条）"""
+        releases: List[Dict] = []
+        url = f"{self.base_url}/releases?per_page=100"
+        while url:
+            response = requests.get(url, headers=self.headers)
+            response.raise_for_status()
+            releases.extend(response.json())
+            url = response.links.get("next", {}).get("url")
+        return releases
 
     def load_cached_stats(self, output_dir: str):
         """Load yesterday's stats from cache file"""
