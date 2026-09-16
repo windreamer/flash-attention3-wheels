@@ -338,6 +338,8 @@ jobs:
   create-release:
     needs: all-wheels-done
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/download-artifact@v8
