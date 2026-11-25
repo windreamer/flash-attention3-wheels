@@ -57,36 +57,21 @@ jobs:
             --output docs
       - name: Setup Pages
         uses: actions/configure-pages@v6
-      - name: Delete old github-pages artifacts
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          ARTIFACTS=$(gh api repos/${{ github.repository }}/actions/artifacts --jq '.artifacts[] | select(.name == "github-pages") | .id')
-          for id in $ARTIFACTS; do
-            echo "Deleting artifact $id"
-            gh api --method DELETE repos/${{ github.repository }}/actions/artifacts/$id
-          done
+      # NOTE: no pre-deploy deletion of `github-pages` artifacts here. Deploy-pages
+      # resolves the artifact via the run's artifact listing, which is eventually
+      # consistent: deleting same-name artifacts seconds before deploy makes the
+      # lookup return a stale (already-deleted) id -> "Unable to find artifact
+      # matching the id" (400). Old artifacts expire on their own (retention 1 day).
+      # The artifact name is per-attempt so re-running failed deploy jobs never
+      # collides with a previous attempt's artifact of the same name.
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
         with:
           path: 'docs'
-      - name: Keep only the latest github-pages artifact
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          ARTIFACTS=$(gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts --jq '.artifacts[] | select(.name == "github-pages") | .id')
-
-          FIRST=true
-          for id in $ARTIFACTS; do
-            if [ "$FIRST" = true ]; then
-              echo "Keeping latest artifact $id"
-              FIRST=false
-            else
-              echo "Deleting old artifact $id"
-              gh api --method DELETE repos/${{ github.repository }}/actions/artifacts/$id
-            fi
-          done
+          name: github-pages-${{ github.run_attempt }}
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
+        with:
+          artifact_name: github-pages-${{ github.run_attempt }}
 
